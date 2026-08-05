@@ -31,14 +31,17 @@ import {
   generateJournalEntries 
 } from '../utils/mockDataGenerator';
 
-const API_BASE_URL = 'http://localhost:5005/api';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
+  ? import.meta.env.VITE_API_URL 
+  : 'http://localhost:5005/api';
 const DB_KEY = 'minerp_database_v2';
 
 // Central Database Engine (LocalStorage / API fallback)
 export function getLocalDB() {
+  let db = null;
   try {
     const raw = localStorage.getItem(DB_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) db = JSON.parse(raw);
   } catch (e) {
     console.error('Failed to parse local DB', e);
   }
@@ -89,8 +92,19 @@ export function getLocalDB() {
     ]
   };
 
-  saveLocalDB(seedDB);
-  return seedDB;
+  if (!db) {
+    db = seedDB;
+  } else {
+    // Fill in any missing or empty collections
+    Object.keys(seedDB).forEach(key => {
+      if (!db[key] || (Array.isArray(db[key]) && db[key].length === 0)) {
+        db[key] = seedDB[key];
+      }
+    });
+  }
+
+  saveLocalDB(db);
+  return db;
 }
 
 export function saveLocalDB(db) {
