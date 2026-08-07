@@ -15,29 +15,40 @@ export default function Login({ onLogin, usersList = [] }) {
       return;
     }
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1200);
-      const res = await fetch('http://localhost:5005/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      const data = await res.json();
-      if (res.ok) {
-        onLogin({
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          title: data.user.title || data.user.role,
-          avatar: data.user.name.split(' ').map(n => n[0]).join('').toUpperCase()
+    const isRemoteHostWithoutCustomBackend = typeof window !== 'undefined' 
+      && window.location.hostname !== 'localhost' 
+      && window.location.hostname !== '127.0.0.1' 
+      && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL);
+
+    const API_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
+      ? import.meta.env.VITE_API_URL
+      : (isRemoteHostWithoutCustomBackend ? '' : 'http://localhost:5005/api');
+
+    if (!isRemoteHostWithoutCustomBackend && API_URL) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1200);
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal
         });
-        return;
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          onLogin({
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role,
+            title: data.user.title || data.user.role,
+            avatar: data.user.name.split(' ').map(n => n[0]).join('').toUpperCase()
+          });
+          return;
+        }
+      } catch (err) {
+        // Backend fetch failed or timed out
       }
-    } catch (err) {
-      // Backend fetch failed or timed out
     }
 
     // Local Database & Demo Accounts Authentication Fallback

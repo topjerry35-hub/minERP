@@ -185,15 +185,17 @@ export async function fetchProducts() {
 }
 
 export async function createProduct(productData) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/products`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(productData)
-    });
-    if (res.ok) return await res.json();
-  } catch (e) {
-    // API server temporarily unreachable
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      backendOnlineStatus = false;
+    }
   }
   const db = getLocalDB();
   const unitPrice = parseFloat(productData.unitPrice !== undefined ? productData.unitPrice : (productData.price !== undefined ? productData.price : 0));
@@ -218,15 +220,17 @@ export async function createProduct(productData) {
 }
 
 export async function updateProduct(sku, productData) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(sku)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(productData)
-    });
-    if (res.ok) return await res.json();
-  } catch (e) {
-    // API server temporarily unreachable
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(sku)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {
+      backendOnlineStatus = false;
+    }
   }
   const db = getLocalDB();
   db.products = db.products.map(p => p.sku === sku ? { ...p, ...productData } : p);
