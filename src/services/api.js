@@ -3,9 +3,14 @@
  * Provides persistent Database operations across all Enterprise modules (Offline & Online mode)
  * All values are fetched from and stored directly in the Database engine.
  */
+const isRemoteHostWithoutCustomBackend = typeof window !== 'undefined' 
+  && window.location.hostname !== 'localhost' 
+  && window.location.hostname !== '127.0.0.1' 
+  && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL);
+
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
   ? import.meta.env.VITE_API_URL 
-  : 'http://localhost:5005/api';
+  : (isRemoteHostWithoutCustomBackend ? '' : 'http://localhost:5005/api');
 const DB_KEY = 'minerp_database_v3';
 
 // Central Database Engine (LocalStorage / API fallback)
@@ -127,13 +132,17 @@ let backendOnlineStatus = null;
 let lastCheckTime = 0;
 
 async function isBackendAvailable() {
+  if (isRemoteHostWithoutCustomBackend || !API_BASE_URL) {
+    backendOnlineStatus = false;
+    return false;
+  }
   const now = Date.now();
   if (backendOnlineStatus === true && (now - lastCheckTime < 10000)) {
     return true;
   }
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
     backendOnlineStatus = res.ok;
@@ -161,14 +170,16 @@ export async function fetchHealth() {
    PRODUCTS DATABASE CRUD
    ========================================== */
 export async function fetchProducts() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/products`);
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/products`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) return data;
+      }
+    } catch (e) {
+      backendOnlineStatus = false;
     }
-  } catch (e) {
-    // API server temporarily unreachable
   }
   return getLocalDB().products || [];
 }
