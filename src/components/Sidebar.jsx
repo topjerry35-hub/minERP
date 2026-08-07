@@ -70,6 +70,9 @@ export default function Sidebar({ activeTab, setActiveTab, collapsed, setCollaps
       return;
     }
     setActiveTab(itemId);
+    if (window.innerWidth <= 768 && setCollapsed) {
+      setCollapsed(true);
+    }
   };
 
   return (
