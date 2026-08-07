@@ -98,54 +98,86 @@ export function getLocalDB() {
   return db;
 }
 
+const DIRECT_CLOUD_URL = 'https://jsonblob.com/api/jsonBlob/019fdc46-f6b6-7163-83de-bba51678fca3';
+
 let syncDebounceTimer = null;
 let lastPullTime = 0;
 
 export async function pullCloudSync() {
   const now = Date.now();
-  if (now - lastPullTime < 3000) {
+  if (now - lastPullTime < 2500) {
     return getLocalDB();
   }
   lastPullTime = now;
+
+  let remoteData = null;
   try {
     const res = await fetch('/api/sync');
     if (res.ok) {
-      const remoteData = await res.json();
-      if (remoteData && typeof remoteData === 'object' && !remoteData.empty) {
-        const local = getLocalDB();
-        const merged = { ...local };
-        
-        ['products', 'categories', 'orders', 'quotations', 'customers', 'invoices', 'customerPayments', 'suppliers', 'purchaseOrders', 'leads', 'deals', 'activities', 'employees', 'accounts', 'journalEntries', 'bankAccounts', 'companies', 'offices', 'roles', 'users'].forEach(key => {
-          if (Array.isArray(remoteData[key]) && remoteData[key].length > 0) {
-            const existingMap = new Map((local[key] || []).map(item => [item.id || item.sku || item.code || JSON.stringify(item), item]));
-            remoteData[key].forEach(rItem => {
-              const id = rItem.id || rItem.sku || rItem.code || JSON.stringify(rItem);
-              existingMap.set(id, rItem);
-            });
-            merged[key] = Array.from(existingMap.values());
-          }
-        });
-        
-        localStorage.setItem(DB_KEY, JSON.stringify(merged));
-        return merged;
+      const data = await res.json();
+      if (data && typeof data === 'object' && !data.empty) {
+        remoteData = data;
       }
     }
-  } catch (e) {
-    // Cloud sync offline/bypassed
+  } catch (e) {}
+
+  if (!remoteData) {
+    try {
+      const directRes = await fetch(DIRECT_CLOUD_URL, { headers: { 'Accept': 'application/json' } });
+      if (directRes.ok) {
+        const data = await directRes.json();
+        if (data && typeof data === 'object' && !data.empty) {
+          remoteData = data;
+        }
+      }
+    } catch (e) {}
   }
+
+  if (remoteData) {
+    const local = getLocalDB();
+    const merged = { ...local };
+    
+    ['products', 'categories', 'orders', 'quotations', 'customers', 'invoices', 'customerPayments', 'suppliers', 'purchaseOrders', 'leads', 'deals', 'activities', 'employees', 'accounts', 'journalEntries', 'bankAccounts', 'companies', 'offices', 'roles', 'users'].forEach(key => {
+      if (Array.isArray(remoteData[key]) && remoteData[key].length > 0) {
+        const existingMap = new Map((local[key] || []).map(item => [item.id || item.sku || item.code || JSON.stringify(item), item]));
+        remoteData[key].forEach(rItem => {
+          const id = rItem.id || rItem.sku || rItem.code || JSON.stringify(rItem);
+          existingMap.set(id, rItem);
+        });
+        merged[key] = Array.from(existingMap.values());
+      }
+    });
+    
+    localStorage.setItem(DB_KEY, JSON.stringify(merged));
+    return merged;
+  }
+
   return getLocalDB();
 }
 
 export async function pushCloudSync(db) {
+  const payload = JSON.stringify(db);
   try {
     await fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(db)
+      body: payload
     });
-  } catch (e) {
-    // Silent fallback
-  }
+  } catch (e) {}
+
+  try {
+    await fetch(DIRECT_CLOUD_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: payload
+    });
+  } catch (e) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', () => {
+    pullCloudSync();
+  });
 }
 
 export function saveLocalDB(db) {
