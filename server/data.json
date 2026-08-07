@@ -1,22 +1,6 @@
 {
-  "products": [
-    { "sku": "MON-34-UW", "name": "UltraWide 34\" Curved Monitor", "category": "Electronics", "stock": 2, "minStock": 5, "unitPrice": 499.99, "costPrice": 320.00, "barcode": "109283749102" },
-    { "sku": "DOC-TB4-PRO", "name": "Thunderbolt 4 Docking Station", "category": "Electronics", "stock": 24, "minStock": 10, "unitPrice": 189.50, "costPrice": 110.00, "barcode": "883920192834" },
-    { "sku": "CHR-EX-BLK", "name": "Executive Leather Task Chair", "category": "Furniture", "stock": 15, "minStock": 8, "unitPrice": 299.00, "costPrice": 175.00, "barcode": "772910384756" },
-    { "sku": "KB-ERG-01", "name": "Ergonomic Mechanical Keyboard", "category": "Electronics", "stock": 0, "minStock": 15, "unitPrice": 129.99, "costPrice": 70.00, "barcode": "992018374625" },
-    { "sku": "DSK-SIT-OAK", "name": "Motorized Sit-Stand Oak Desk", "category": "Furniture", "stock": 8, "minStock": 6, "unitPrice": 549.00, "costPrice": 350.00, "barcode": "554019283746" }
-  ],
-  "orders": [
-    { "id": "ORD-9842", "customer": "Nexus Tech Solutions", "email": "procurement@nexustech.io", "date": "2026-07-21", "itemsCount": 4, "amount": 3450.00, "status": "Completed" },
-    { "id": "ORD-9841", "customer": "Apex Logistics Inc.", "email": "billing@apexlogistics.com", "date": "2026-07-21", "itemsCount": 1, "amount": 1850.00, "status": "Processing" },
-    { "id": "ORD-9840", "customer": "Quantum BioLabs", "email": "supplies@quantumbio.org", "date": "2026-07-20", "itemsCount": 12, "amount": 720.50, "status": "Completed" }
-  ],
-  "customers": [
-    { "id": "CUST-201", "name": "Nexus Tech Solutions", "company": "Nexus Tech Solutions", "email": "procurement@nexustech.io", "phone": "+1 (555) 234-8900", "creditLimit": 25000, "lifetimeSales": 45200.00, "receivablesBalance": 3450.00 },
-    { "id": "CUST-202", "name": "Apex Logistics Inc", "company": "Apex Logistics Inc", "email": "billing@apexlogistics.com", "phone": "+1 (555) 890-1234", "creditLimit": 15000, "lifetimeSales": 28900.00, "receivablesBalance": 1850.00 }
-  ],
-  "employees": [
-    { "id": "EMP-101", "name": "Jane Doe", "role": "Operations Lead", "department": "Operations", "salary": 95000, "status": "Active", "hireDate": "2024-03-15" },
-    { "id": "EMP-102", "name": "Alex Smith", "role": "Warehouse Manager", "department": "Logistics", "salary": 68000, "status": "Active", "hireDate": "2024-06-01" }
-  ]
+  "products": [],
+  "orders": [],
+  "customers": [],
+  "employees": []
 }

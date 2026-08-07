@@ -24,12 +24,6 @@ import {
   createActivity 
 } from '../../services/api';
 
-import { 
-  generateDeals, 
-  generateLeads, 
-  generateActivities 
-} from '../../utils/mockDataGenerator';
-
 export default function CRM({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('pipeline');
 
@@ -42,20 +36,20 @@ export default function CRM({ searchQuery, setSearchQuery }) {
   const [toastMessage, setToastMessage] = useState(null);
 
   // Database Datasets
-  const [deals, setDeals] = useState(() => generateDeals(100));
-  const [leads, setLeads] = useState(() => generateLeads(100));
-  const [activities, setActivities] = useState(() => generateActivities(100));
+  const [deals, setDeals] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [activities, setActivities] = useState([]);
 
   useEffect(() => {
     async function loadDbData() {
       const fetchedDeals = await fetchDeals();
-      if (fetchedDeals && fetchedDeals.length > 0) setDeals(fetchedDeals);
+      if (fetchedDeals) setDeals(fetchedDeals);
 
       const fetchedLeads = await fetchLeads();
-      if (fetchedLeads && fetchedLeads.length > 0) setLeads(fetchedLeads);
+      if (fetchedLeads) setLeads(fetchedLeads);
 
       const fetchedActs = await fetchActivities();
-      if (fetchedActs && fetchedActs.length > 0) setActivities(fetchedActs);
+      if (fetchedActs) setActivities(fetchedActs);
     }
     loadDbData();
   }, []);

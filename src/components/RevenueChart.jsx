@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { TrendingUp, IndianRupee, ArrowUpRight } from 'lucide-react';
 
-export default function RevenueChart({ data, timeRange }) {
+export default function RevenueChart({ data = [], timeRange }) {
   const [activeMetric, setActiveMetric] = useState('revenue');
   const [hoveredBar, setHoveredBar] = useState(null);
 
-  const maxValue = Math.max(...data.map(d => Math.max(d.revenue, d.expenses))) * 1.15;
+  const safeData = Array.isArray(data) ? data : [];
+  const maxDataVal = Math.max(0, ...safeData.map(d => Math.max(d.revenue || 0, d.expenses || 0)));
+  const maxValue = maxDataVal > 0 ? maxDataVal * 1.15 : 100;
   const height = 220;
   const width = 600;
 
-  const totalRevenue = data.reduce((acc, curr) => acc + curr.revenue, 0);
-  const totalExpenses = data.reduce((acc, curr) => acc + curr.expenses, 0);
+  const totalRevenue = safeData.reduce((acc, curr) => acc + (curr.revenue || 0), 0);
+  const totalExpenses = safeData.reduce((acc, curr) => acc + (curr.expenses || 0), 0);
   const totalProfit = totalRevenue - totalExpenses;
 
   return (
@@ -81,12 +83,17 @@ export default function RevenueChart({ data, timeRange }) {
           })}
 
           {/* Bar Chart Visualization */}
-          {data.map((item, idx) => {
-            const barWidth = (width / data.length) * 0.45;
-            const groupX = (idx * (width / data.length)) + (width / data.length) / 2;
-            const revHeight = (item.revenue / maxValue) * (height - 40);
-            const expHeight = (item.expenses / maxValue) * (height - 40);
-            const profitHeight = ((item.revenue - item.expenses) / maxValue) * (height - 40);
+          {safeData.map((item, idx) => {
+            const barWidth = (width / safeData.length) * 0.45;
+            const groupX = (idx * (width / safeData.length)) + (width / safeData.length) / 2;
+            const rawRev = ((item.revenue || 0) / maxValue) * (height - 40);
+            const revHeight = isNaN(rawRev) || rawRev < 0 ? 0 : rawRev;
+
+            const rawExp = ((item.expenses || 0) / maxValue) * (height - 40);
+            const expHeight = isNaN(rawExp) || rawExp < 0 ? 0 : rawExp;
+
+            const rawProfit = (((item.revenue || 0) - (item.expenses || 0)) / maxValue) * (height - 40);
+            const profitHeight = isNaN(rawProfit) || rawProfit < 0 ? 0 : rawProfit;
 
             const isHovered = hoveredBar === idx;
 
@@ -159,12 +166,12 @@ export default function RevenueChart({ data, timeRange }) {
         </svg>
 
         {/* Hover Tooltip overlay */}
-        {hoveredBar !== null && (
+        {hoveredBar !== null && safeData[hoveredBar] && (
           <div 
             style={{
               position: 'absolute',
               top: '10px',
-              left: `${(hoveredBar / data.length) * 100 + 4}%`,
+              left: `${(hoveredBar / safeData.length) * 100 + 4}%`,
               background: 'var(--bg-card)',
               border: '1px solid var(--border-color)',
               padding: '8px 12px',
@@ -176,16 +183,16 @@ export default function RevenueChart({ data, timeRange }) {
             }}
           >
             <div style={{ fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
-              {data[hoveredBar].label}
+              {safeData[hoveredBar].label}
             </div>
             <div style={{ color: 'var(--accent-blue)' }}>
-              Rev: ₹{data[hoveredBar].revenue.toLocaleString('en-IN')}
+              Rev: ₹{(safeData[hoveredBar].revenue || 0).toLocaleString('en-IN')}
             </div>
             <div style={{ color: '#ef4444' }}>
-              Exp: ₹{data[hoveredBar].expenses.toLocaleString('en-IN')}
+              Exp: ₹{(safeData[hoveredBar].expenses || 0).toLocaleString('en-IN')}
             </div>
             <div style={{ color: '#10b981', fontWeight: '700' }}>
-              Profit: ₹{(data[hoveredBar].revenue - data[hoveredBar].expenses).toLocaleString('en-IN')}
+              Profit: ₹{((safeData[hoveredBar].revenue || 0) - (safeData[hoveredBar].expenses || 0)).toLocaleString('en-IN')}
             </div>
           </div>
         )}

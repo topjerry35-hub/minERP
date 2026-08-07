@@ -46,16 +46,6 @@ import {
   createSalesReturn 
 } from '../../services/api';
 
-import { 
-  generateCustomers, 
-  generateQuotations, 
-  generateOrders, 
-  generateInvoices, 
-  generateCustomerPayments, 
-  generateSalesReturns,
-  generateProducts
-} from '../../utils/mockDataGenerator';
-
 export default function Sales({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('orders');
 
@@ -77,36 +67,36 @@ export default function Sales({ searchQuery, setSearchQuery }) {
   const [toastMessage, setToastMessage] = useState(null);
 
   // Database Datasets
-  const [customers, setCustomers] = useState(() => generateCustomers(100));
-  const [products, setProducts] = useState(() => generateProducts(100));
-  const [quotations, setQuotations] = useState(() => generateQuotations(100));
-  const [salesOrders, setSalesOrders] = useState(() => generateOrders(100));
-  const [invoices, setInvoices] = useState(() => generateInvoices(100));
-  const [customerPayments, setCustomerPayments] = useState(() => generateCustomerPayments(100));
-  const [salesReturns, setSalesReturns] = useState(() => generateSalesReturns(100));
+  const [customers, setCustomers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [quotations, setQuotations] = useState([]);
+  const [salesOrders, setSalesOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [customerPayments, setCustomerPayments] = useState([]);
+  const [salesReturns, setSalesReturns] = useState([]);
 
   useEffect(() => {
     async function loadData() {
       const fetchedCustomers = await fetchCustomers();
-      if (fetchedCustomers && fetchedCustomers.length > 0) setCustomers(fetchedCustomers);
+      if (fetchedCustomers) setCustomers(fetchedCustomers);
       
       const fetchedOrders = await fetchOrders();
-      if (fetchedOrders && fetchedOrders.length > 0) setSalesOrders(fetchedOrders);
+      if (fetchedOrders) setSalesOrders(fetchedOrders);
 
       const fetchedProds = await fetchProducts();
-      if (fetchedProds && fetchedProds.length > 0) setProducts(fetchedProds);
+      if (fetchedProds) setProducts(fetchedProds);
 
       const fetchedQuotes = await fetchQuotations();
-      if (fetchedQuotes && fetchedQuotes.length > 0) setQuotations(fetchedQuotes);
+      if (fetchedQuotes) setQuotations(fetchedQuotes);
 
       const fetchedInvs = await fetchInvoices();
-      if (fetchedInvs && fetchedInvs.length > 0) setInvoices(fetchedInvs);
+      if (fetchedInvs) setInvoices(fetchedInvs);
 
       const fetchedPays = await fetchCustomerPayments();
-      if (fetchedPays && fetchedPays.length > 0) setCustomerPayments(fetchedPays);
+      if (fetchedPays) setCustomerPayments(fetchedPays);
 
       const fetchedRets = await fetchSalesReturns();
-      if (fetchedRets && fetchedRets.length > 0) setSalesReturns(fetchedRets);
+      if (fetchedRets) setSalesReturns(fetchedRets);
     }
     loadData();
   }, []);

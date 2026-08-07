@@ -26,7 +26,7 @@ export default function ProductList({
 }) {
   const [categoryFilter, setCategoryFilter] = useState('All');
 
-  const categories = ['All', 'Electronics', 'Hardware', 'Furniture', 'Accessories'];
+  const categories = ['All', ...Array.from(new Set((products || []).map(p => p.category).filter(Boolean)))];
 
   const query = (searchQuery || '').toLowerCase();
   const filteredProducts = (products || []).filter(p => {

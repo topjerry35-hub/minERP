@@ -62,7 +62,7 @@ export default function ActivityLogList({ activities, onLogActivityClick, search
                   <td style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{act.subject}</td>
                   <td>
                     <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{act.contact}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{act.company}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{typeof act.company === 'object' ? (act.company?.name || act.company?.code || '') : act.company}</div>
                   </td>
                   <td>{formatDate(act.date)} {act.time}</td>
                   <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '300px' }}>{act.notes}</td>

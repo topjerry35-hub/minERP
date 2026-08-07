@@ -1,19 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, PlusCircle, Trash2 } from 'lucide-react';
 
-export default function NewQuotationModal({ isOpen, onClose, customers, products = [], onCreateQuotation }) {
-  const [customer, setCustomer] = useState(customers[0]?.name || '');
-  const [validUntil, setValidUntil] = useState('2026-08-30');
-  const [items, setItems] = useState([
-    { sku: products[0]?.sku || '', qty: 2, unitPrice: products[0]?.unitPrice || products[0]?.price || 100.00 }
-  ]);
+export default function NewQuotationModal({ isOpen, onClose, customers = [], products = [], onCreateQuotation }) {
+  const [customer, setCustomer] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+  const [items, setItems] = useState([]);
+  const [validationError, setValidationError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      const initialCustomer = customers[0]?.name || '';
+      setCustomer(initialCustomer);
+
+      // Default validUntil to 30 days from today
+      const today = new Date();
+      today.setDate(today.getDate() + 30);
+      setValidUntil(today.toISOString().split('T')[0]);
+
+      const initialSku = products[0]?.sku || products[0]?.name || '';
+      const initialName = products[0]?.name || products[0]?.sku || '';
+      const initialPrice = products[0]?.unitPrice || products[0]?.price || 100.00;
+
+      setItems([
+        { sku: initialSku, name: initialName, qty: 1, unitPrice: initialPrice }
+      ]);
+      setValidationError('');
+    }
+  }, [isOpen, customers, products]);
 
   if (!isOpen) return null;
 
   const handleAddItem = () => {
-    const firstSku = products[0]?.sku || '';
+    const firstSku = products[0]?.sku || products[0]?.name || '';
     const firstPrice = products[0]?.unitPrice || products[0]?.price || 100.00;
-    setItems(prev => [...prev, { sku: firstSku, qty: 1, unitPrice: firstPrice }]);
+    const firstName = products[0]?.name || '';
+    setItems(prev => [...prev, { sku: firstSku, name: firstName, qty: 1, unitPrice: firstPrice }]);
   };
 
   const handleRemoveItem = (index) => {
@@ -51,29 +72,44 @@ export default function NewQuotationModal({ isOpen, onClose, customers, products
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!customer || items.length === 0) return;
+    setValidationError('');
+
+    const trimmedCustomer = (customer || '').trim();
+    if (!trimmedCustomer) {
+      setValidationError('Please select or enter a Customer Name for this quotation.');
+      return;
+    }
+
+    if (items.length === 0) {
+      setValidationError('Please add at least one line item to the quotation.');
+      return;
+    }
+
+    const validItems = items.map(item => {
+      const pName = item.name || item.sku || 'Quoted Product / Item';
+      const pSku = item.sku || item.name || `SKU-${Date.now()}`;
+      return {
+        sku: pSku,
+        name: pName,
+        qty: parseInt(item.qty) || 1,
+        unitPrice: parseFloat(item.unitPrice) || 0
+      };
+    });
 
     const amount = calculateTotal();
     const qtnId = `QTN-2026-${Math.floor(100 + Math.random() * 900)}`;
 
     onCreateQuotation({
       id: qtnId,
-      customer,
+      customer: trimmedCustomer,
       date: new Date().toISOString().split('T')[0],
-      validUntil,
-      items,
+      validUntil: validUntil || new Date(Date.now() + 30*86400000).toISOString().split('T')[0],
+      items: validItems,
       amount,
       status: 'Sent'
     });
 
     onClose();
-
-    // Reset form inputs after submission
-    setCustomer(customers[0]?.name || '');
-    setValidUntil('2026-08-30');
-    setItems([
-      { sku: products[0]?.sku || '', qty: 2, unitPrice: products[0]?.unitPrice || products[0]?.price || 100.00 }
-    ]);
   };
 
   return (
@@ -88,19 +124,31 @@ export default function NewQuotationModal({ isOpen, onClose, customers, products
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
+            {validationError && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', padding: '10px 14px', borderRadius: '8px', marginBottom: '14px', fontSize: '0.85rem', fontWeight: '600' }}>
+                ⚠️ {validationError}
+              </div>
+            )}
+
             <div className="grid-2">
               <div className="form-group">
-                <label>Select Customer *</label>
-                <select 
+                <label>Select or Enter Customer *</label>
+                <input 
+                  type="text" 
+                  list="qtn-customer-datalist"
                   className="form-control"
+                  placeholder="Type or select Customer Name"
                   value={customer}
                   onChange={(e) => setCustomer(e.target.value)}
                   required
-                >
+                />
+                <datalist id="qtn-customer-datalist">
                   {customers.map(c => (
-                    <option key={c.id} value={c.name}>{c.name} ({c.company})</option>
+                    <option key={c.id || c.name} value={c.name}>
+                      {c.company ? `${c.name} (${typeof c.company === 'object' ? (c.company.name || c.company.code || '') : c.company})` : c.name}
+                    </option>
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className="form-group">
@@ -134,16 +182,6 @@ export default function NewQuotationModal({ isOpen, onClose, customers, products
                       style={{ fontSize: '0.82rem' }}
                       placeholder="-- Select or Search Item --"
                       value={item.name || item.sku || ''}
-                      onFocus={(e) => {
-                        if (e.target.value === '-- Select or Search Item --') {
-                          handleItemChange(idx, 'name', '');
-                        }
-                      }}
-                      onClick={(e) => {
-                        if (e.target.value === '-- Select or Search Item --') {
-                          handleItemChange(idx, 'name', '');
-                        }
-                      }}
                       onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
                       required
                     />
@@ -164,6 +202,7 @@ export default function NewQuotationModal({ isOpen, onClose, customers, products
                     placeholder="Qty"
                     value={item.qty}
                     onChange={(e) => handleItemChange(idx, 'qty', e.target.value)}
+                    required
                   />
 
                   <input 
@@ -174,6 +213,7 @@ export default function NewQuotationModal({ isOpen, onClose, customers, products
                     placeholder="Price (₹)"
                     value={item.unitPrice}
                     onChange={(e) => handleItemChange(idx, 'unitPrice', e.target.value)}
+                    required
                   />
 
                   <div style={{ fontWeight: '700', width: '80px', fontSize: '0.85rem', textAlign: 'right' }}>

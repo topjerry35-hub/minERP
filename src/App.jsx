@@ -20,16 +20,17 @@ import NewSaleModal from './components/NewSaleModal';
 import InvoiceBillModal from './components/Sales/InvoiceBillModal';
 import NotificationsDrawer from './components/NotificationsDrawer';
 import { formatCurrency } from './utils/currency';
-import { createOrder, createInvoice } from './services/api';
+import { createOrder, createInvoice, fetchCompanies, fetchOffices, fetchRoles, fetchUsers } from './services/api';
 
 function App() {
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [user, setUser] = useState({
-    name: 'Jane Doe',
-    email: 'jane.doe@minerp.com',
-    role: 'Operations Lead',
-    avatar: 'JD'
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const savedUser = localStorage.getItem('minerp_auth_user');
+    return savedUser !== null;
+  });
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('minerp_auth_user');
+    return savedUser ? JSON.parse(savedUser) : null;
   });
 
   // Companies & Multi-Office State
@@ -76,6 +77,20 @@ function App() {
   const [selectedBranch, setSelectedBranch] = useState('New York Main HQ');
 
   useEffect(() => {
+    async function loadSystemMetadata() {
+      const c = await fetchCompanies();
+      if (c && c.length > 0) setCompanies(c);
+      const o = await fetchOffices();
+      if (o && o.length > 0) setOffices(o);
+      const r = await fetchRoles();
+      if (r && r.length > 0) setRoles(r);
+      const u = await fetchUsers();
+      if (u && u.length > 0) setUsersList(u);
+    }
+    loadSystemMetadata();
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('minerp_companies', JSON.stringify(companies));
   }, [companies]);
 
@@ -102,7 +117,17 @@ function App() {
     }
   }, [usersList, user]);
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem('minerp_active_tab');
+    return savedTab || 'dashboard';
+  });
+
+  useEffect(() => {
+    if (activeTab) {
+      localStorage.setItem('minerp_active_tab', activeTab);
+    }
+  }, [activeTab]);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('minerp_sidebar_collapsed');
     return saved !== null ? JSON.parse(saved) : false; // Default to EXPANDED (not collapsed)
@@ -153,12 +178,16 @@ function App() {
   const handleLogin = (userData) => {
     setUser(userData);
     setIsAuthenticated(true);
-    setActiveTab('dashboard');
+    localStorage.setItem('minerp_auth_user', JSON.stringify(userData));
+    const savedTab = localStorage.getItem('minerp_active_tab');
+    setActiveTab(savedTab || 'dashboard');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUser(null);
+    localStorage.removeItem('minerp_auth_user');
+    localStorage.removeItem('minerp_active_tab');
     setActiveTab('dashboard');
   };
 

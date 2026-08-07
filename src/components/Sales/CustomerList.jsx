@@ -10,15 +10,17 @@ export default function CustomerList({
   searchQuery 
 }) {
   const query = (searchQuery || '').toLowerCase();
-  const filteredCustomers = (customers || []).filter(c => 
-    c && (
+  const filteredCustomers = (customers || []).filter(c => {
+    const companyStr = typeof c.company === 'object' ? (c.company?.name || '') : (c.company || '');
+    return c && (
       (c.name || '').toLowerCase().includes(query) ||
-      (c.company || '').toLowerCase().includes(query) ||
-      (c.email || '').toLowerCase().includes(query)
-    )
-  );
+      companyStr.toLowerCase().includes(query) ||
+      (c.email || '').toLowerCase().includes(query) ||
+      (c.phone || '').includes(query)
+    );
+  });
 
-  const totalReceivables = customers.reduce((sum, c) => sum + c.receivablesBalance, 0);
+  const totalReceivables = (customers || []).reduce((sum, c) => sum + (c.receivablesBalance || 0), 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -94,7 +96,9 @@ export default function CustomerList({
                       {c.name}
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {c.id}</div>
                     </td>
-                    <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{c.company}</td>
+                    <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                      {typeof c.company === 'object' ? (c.company?.name || c.company?.code || 'Enterprise') : (c.company || 'Enterprise')}
+                    </td>
                     <td>
                       <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>{c.email}</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.phone}</div>

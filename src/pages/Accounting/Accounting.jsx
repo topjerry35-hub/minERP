@@ -21,6 +21,7 @@ import { formatDate } from '../../utils/date';
 import { 
   fetchBankAccounts, 
   updateBankAccountBalance, 
+  createBankAccount,
   fetchArInvoices, 
   fetchApBills, 
   updateApBill,
@@ -30,13 +31,19 @@ import {
   createJournalEntry 
 } from '../../services/api';
 
-import { 
-  generateBankAccounts, 
-  generateArInvoices, 
-  generateApBills, 
-  generateChartOfAccounts, 
-  generateJournalEntries 
-} from '../../utils/mockDataGenerator';
+const defaultGLAccounts = [
+  { code: '1010', name: 'Cash & Cash Equivalents', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+  { code: '1020', name: 'Accounts Receivable (AR)', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+  { code: '1030', name: 'Merchandise Inventory Asset', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+  { code: '2010', name: 'Accounts Payable (AP)', type: 'Liability', category: 'Current Liabilities', balance: 0.00 },
+  { code: '2020', name: 'GST / VAT Tax Payable', type: 'Liability', category: 'Current Liabilities', balance: 0.00 },
+  { code: '3010', name: 'Owners Equity & Retained Earnings', type: 'Equity', category: 'Equity', balance: 0.00 },
+  { code: '4010', name: 'Sales Revenue', type: 'Revenue', category: 'Operating Income', balance: 0.00 },
+  { code: '4020', name: 'Services & Consulting Revenue', type: 'Revenue', category: 'Operating Income', balance: 0.00 },
+  { code: '5010', name: 'Cost of Goods Sold (COGS)', type: 'Expense', category: 'Cost of Sales', balance: 0.00 },
+  { code: '5020', name: 'Salaries & Payroll Expenses', type: 'Expense', category: 'Operating Expenses', balance: 0.00 },
+  { code: '5030', name: 'Office Rent & Utility Expenses', type: 'Expense', category: 'Operating Expenses', balance: 0.00 }
+];
 
 export default function Accounting({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('pnl');
@@ -50,28 +57,34 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
   const [jeAmount, setJeAmount] = useState('');
 
   // Database Datasets
-  const [bankAccounts, setBankAccounts] = useState(() => generateBankAccounts(100));
-  const [arInvoices, setArInvoices] = useState(() => generateArInvoices(100));
-  const [apBills, setApBills] = useState(() => generateApBills(100));
-  const [accounts, setAccounts] = useState(() => generateChartOfAccounts(100));
-  const [journalEntries, setJournalEntries] = useState(() => generateJournalEntries(100));
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [arInvoices, setArInvoices] = useState([]);
+  const [apBills, setApBills] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [journalEntries, setJournalEntries] = useState([]);
+
+  const activeAccountList = (accounts && accounts.length > 0) ? accounts : defaultGLAccounts;
 
   useEffect(() => {
     async function loadDbData() {
       const banks = await fetchBankAccounts();
-      if (banks && banks.length > 0) setBankAccounts(banks);
+      if (banks) setBankAccounts(banks);
 
       const ars = await fetchArInvoices();
-      if (ars && ars.length > 0) setArInvoices(ars);
+      if (ars) setArInvoices(ars);
 
       const aps = await fetchApBills();
-      if (aps && aps.length > 0) setApBills(aps);
+      if (aps) setApBills(aps);
 
       const accs = await fetchAccounts();
-      if (accs && accs.length > 0) setAccounts(accs);
+      if (accs && accs.length > 0) {
+        setAccounts(accs);
+      } else {
+        setAccounts(defaultGLAccounts);
+      }
 
       const jrn = await fetchJournalEntries();
-      if (jrn && jrn.length > 0) setJournalEntries(jrn);
+      if (jrn) setJournalEntries(jrn);
     }
     loadDbData();
   }, []);
@@ -96,6 +109,26 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
       return acc;
     }));
     showToast(`Transferred ₹${amount.toFixed(2)} from ${fromName} to ${toName}`);
+  };
+
+  const handleDepositFunds = async (accountName, amount) => {
+    setBankAccounts(prev => prev.map(acc => {
+      if (acc.name === accountName || acc.id === accountName) {
+        const newBal = acc.balance + amount;
+        updateBankAccountBalance(acc.id, newBal);
+        return { ...acc, balance: newBal };
+      }
+      return acc;
+    }));
+    showToast(`Successfully deposited ₹${amount.toFixed(2)} into ${accountName}!`);
+  };
+
+  const handleAddBankAccount = async (accountData) => {
+    const created = await createBankAccount(accountData);
+    if (created) {
+      setBankAccounts(prev => [created, ...prev]);
+      showToast(`Added new bank/cash account: ${created.name}`);
+    }
   };
 
   const handleAddJournalEntry = async (e) => {
@@ -164,7 +197,7 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
   const totalExpenses = accounts.filter(a => a.type === 'Expense').reduce((sum, a) => sum + a.balance, 0);
   const netIncome = totalRevenue - totalExpenses;
 
-  const filteredAccounts = accounts.filter(a => 
+  const filteredAccounts = activeAccountList.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.code.includes(searchQuery) ||
     a.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -277,19 +310,19 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-input)', borderRadius: '8px', color: '#94a3b8' }}>
                 <span>Cost of Goods Sold (COGS)</span>
-                <span>-₹{accounts.find(a => a.code === '5010')?.balance.toFixed(2) || '0.00'}</span>
+                <span>-₹{(activeAccountList.find(a => a.code === '5010')?.balance || 0).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-card-hover)', borderRadius: '8px', fontWeight: '800' }}>
                 <span>Gross Profit Margin</span>
-                <span>₹{(totalRevenue - (accounts.find(a => a.code === '5010')?.balance || 0)).toFixed(2)}</span>
+                <span>₹{(totalRevenue - (activeAccountList.find(a => a.code === '5010')?.balance || 0)).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-input)', borderRadius: '8px', color: '#94a3b8' }}>
                 <span>Salaries & Payroll Expense</span>
-                <span>-₹{accounts.find(a => a.code === '6010')?.balance.toFixed(2) || '0.00'}</span>
+                <span>-₹{(activeAccountList.find(a => a.code === '5020' || a.code === '6010')?.balance || 0).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--bg-input)', borderRadius: '8px', color: '#94a3b8' }}>
                 <span>Office Utilities & Operations Expense</span>
-                <span>-₹{accounts.find(a => a.code === '6050')?.balance.toFixed(2) || '0.00'}</span>
+                <span>-₹{(activeAccountList.find(a => a.code === '5030' || a.code === '6050')?.balance || 0).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b98150', borderRadius: '10px', fontWeight: '800', fontSize: '1.2rem', color: '#10b981' }}>
                 <span>NET INCOME (PROFIT)</span>
@@ -305,6 +338,8 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
         <CashBankList 
           bankAccounts={bankAccounts}
           onTransferFunds={handleTransferFunds}
+          onDepositFunds={handleDepositFunds}
+          onAddBankAccount={handleAddBankAccount}
         />
       )}
 
@@ -430,7 +465,7 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
                       value={jeDebitAccount}
                       onChange={(e) => setJeDebitAccount(e.target.value)}
                     >
-                      {accounts.map(a => (
+                      {activeAccountList.map(a => (
                         <option key={a.code} value={`${a.code} - ${a.name}`}>{a.code} - {a.name} ({a.type})</option>
                       ))}
                     </select>
@@ -443,7 +478,7 @@ export default function Accounting({ searchQuery, setSearchQuery }) {
                       value={jeCreditAccount}
                       onChange={(e) => setJeCreditAccount(e.target.value)}
                     >
-                      {accounts.map(a => (
+                      {activeAccountList.map(a => (
                         <option key={a.code} value={`${a.code} - ${a.name}`}>{a.code} - {a.name} ({a.type})</option>
                       ))}
                     </select>

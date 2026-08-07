@@ -30,13 +30,6 @@ import {
   fetchProducts
 } from '../../services/api';
 
-import { 
-  generateSuppliers, 
-  generatePurchaseOrders, 
-  generateGoodsReceipts, 
-  generateSupplierPayments 
-} from '../../utils/mockDataGenerator';
-
 export default function Purchasing({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('suppliers');
 
@@ -50,28 +43,28 @@ export default function Purchasing({ searchQuery, setSearchQuery }) {
   const [toastMessage, setToastMessage] = useState(null);
 
   // Database Datasets
-  const [suppliers, setSuppliers] = useState(() => generateSuppliers(100));
-  const [purchaseOrders, setPurchaseOrders] = useState(() => generatePurchaseOrders(100));
-  const [goodsReceipts, setGoodsReceipts] = useState(() => generateGoodsReceipts(100));
-  const [payments, setPayments] = useState(() => generateSupplierPayments(100));
+  const [suppliers, setSuppliers] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [goodsReceipts, setGoodsReceipts] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
     async function loadDbData() {
       const sups = await fetchSuppliers();
-      if (sups && sups.length > 0) setSuppliers(sups);
+      if (sups) setSuppliers(sups);
 
       const pos = await fetchPurchaseOrders();
-      if (pos && pos.length > 0) setPurchaseOrders(pos);
+      if (pos) setPurchaseOrders(pos);
 
       const grns = await fetchGoodsReceipts();
-      if (grns && grns.length > 0) setGoodsReceipts(grns);
+      if (grns) setGoodsReceipts(grns);
 
       const pays = await fetchSupplierPayments();
-      if (pays && pays.length > 0) setPayments(pays);
+      if (pays) setPayments(pays);
 
       const prods = await fetchProducts();
-      if (prods && prods.length > 0) setProducts(prods);
+      if (prods) setProducts(prods);
     }
     loadDbData();
   }, []);

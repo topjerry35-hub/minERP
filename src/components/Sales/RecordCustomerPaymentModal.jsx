@@ -58,7 +58,7 @@ export default function RecordCustomerPaymentModal({ isOpen, onClose, customers,
               >
                 {customers.map(c => (
                   <option key={c.id} value={c.name}>
-                    {c.name} ({c.company}) — Receivables Due: {formatCurrency(c.receivablesBalance)}
+                    {c.name} ({typeof c.company === 'object' ? (c.company?.name || c.company?.code || '') : c.company}) — Receivables Due: {formatCurrency(c.receivablesBalance)}
                   </option>
                 ))}
               </select>
@@ -66,7 +66,7 @@ export default function RecordCustomerPaymentModal({ isOpen, onClose, customers,
 
             {currentCustomer && (
               <div style={{ background: 'var(--bg-input)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-                <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{currentCustomer.name} ({currentCustomer.company})</div>
+                <div style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{currentCustomer.name} ({typeof currentCustomer.company === 'object' ? (currentCustomer.company?.name || currentCustomer.company?.code || '') : currentCustomer.company})</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Current Receivables Balance: <strong style={{ color: '#f59e0b' }}>{formatCurrency(currentCustomer.receivablesBalance)}</strong></div>
               </div>
             )}

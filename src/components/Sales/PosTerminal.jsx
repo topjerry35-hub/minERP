@@ -357,7 +357,7 @@ export default function PosTerminal({ products = [], customers = [], onAddOrder 
               <option value="Walk-in Retail Customer">Walk-in Retail Customer</option>
               {customers.map(c => (
                 <option key={c.id} value={c.name}>
-                  {c.name} ({c.company})
+                  {c.name} ({typeof c.company === 'object' ? (c.company?.name || c.company?.code || '') : c.company})
                 </option>
               ))}
             </select>

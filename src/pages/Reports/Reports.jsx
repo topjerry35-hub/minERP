@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Download, 
@@ -25,6 +25,7 @@ import DetailedReportModal from '../../components/Reports/DetailedReportModal';
 import { downloadCSV, downloadPDFSimulated } from '../../utils/exportUtils';
 import { formatDate, isDateInRange } from '../../utils/date';
 import { formatCurrency } from '../../utils/currency';
+import { fetchOrders, fetchProducts, fetchPurchaseOrders, fetchSuppliers, fetchArInvoices } from '../../services/api';
 
 export default function Reports({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('kpi_dashboard');
@@ -35,6 +36,29 @@ export default function Reports({ searchQuery, setSearchQuery }) {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
+  // Database Datasets
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [arInvoices, setArInvoices] = useState([]);
+
+  useEffect(() => {
+    async function loadReportDbData() {
+      const ords = await fetchOrders();
+      if (ords) setOrders(ords);
+      const prods = await fetchProducts();
+      if (prods) setProducts(prods);
+      const pos = await fetchPurchaseOrders();
+      if (pos) setPurchaseOrders(pos);
+      const sups = await fetchSuppliers();
+      if (sups) setSuppliers(sups);
+      const ars = await fetchArInvoices();
+      if (ars) setArInvoices(ars);
+    }
+    loadReportDbData();
+  }, []);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
@@ -44,12 +68,80 @@ export default function Reports({ searchQuery, setSearchQuery }) {
     if (fromDate && toDate) return `${formatDate(fromDate)} to ${formatDate(toDate)}`;
     if (fromDate) return `From ${formatDate(fromDate)}`;
     if (toDate) return `Up to ${formatDate(toDate)}`;
-    return 'Q3 2026 Full Audit Period';
+    return 'Current Database Audit Period';
   };
+
+  const totalGrossRevenue = orders.reduce((sum, o) => sum + Number(o.amount || 0), 0);
+
+  // Dynamic Calculations from Database Products & Orders
+  let fastestMovingSkuName = 'N/A';
+  let fastestMovingSkuSubtitle = 'No SKUs Recorded';
+
+  if (products.length > 0) {
+    const skuSalesMap = {};
+    orders.forEach(o => {
+      if (Array.isArray(o.items)) {
+        o.items.forEach(item => {
+          const key = item.name || item.sku;
+          if (key) {
+            skuSalesMap[key] = (skuSalesMap[key] || 0) + (Number(item.qty) || 1);
+          }
+        });
+      }
+    });
+
+    let maxSold = -1;
+    let topSkuKey = '';
+    Object.keys(skuSalesMap).forEach(key => {
+      if (skuSalesMap[key] > maxSold) {
+        maxSold = skuSalesMap[key];
+        topSkuKey = key;
+      }
+    });
+
+    if (maxSold > 0 && topSkuKey) {
+      fastestMovingSkuName = topSkuKey;
+      fastestMovingSkuSubtitle = `${maxSold} Units Sold in High Demand`;
+    } else {
+      const topProd = products[0];
+      fastestMovingSkuName = topProd.name || topProd.sku || 'N/A';
+      const stock = topProd.stock !== undefined ? topProd.stock : (topProd.currentStock || 0);
+      fastestMovingSkuSubtitle = `${stock} Units in Primary Stock`;
+    }
+  }
+
+  // Total Inventory Asset Valuation calculated dynamically from database products
+  const totalInventoryValuation = products.reduce((sum, p) => {
+    const stock = p.stock !== undefined ? p.stock : (p.currentStock !== undefined ? p.currentStock : 0);
+    const unitPrice = Number(p.costPrice || p.cost || p.unitPrice || p.price || 0);
+    return sum + (stock * unitPrice);
+  }, 0);
+
+  // Average Order Value (AOV)
+  const avgOrderValue = orders.length > 0 ? (totalGrossRevenue / orders.length) : 0;
+
+  // Top Revenue Customer
+  const customerSpendMap = {};
+  orders.forEach(o => {
+    if (o.customer) {
+      customerSpendMap[o.customer] = (customerSpendMap[o.customer] || 0) + Number(o.amount || 0);
+    }
+  });
+  let topCustomerName = 'N/A';
+  let topCustomerSpend = 0;
+  Object.keys(customerSpendMap).forEach(cust => {
+    if (customerSpendMap[cust] > topCustomerSpend) {
+      topCustomerSpend = customerSpendMap[cust];
+      topCustomerName = cust;
+    }
+  });
+
+  // Total Procurement Spend
+  const totalProcurementSpend = purchaseOrders.reduce((sum, po) => sum + Number(po.totalAmount || po.amount || 0), 0);
 
   const handleExportPDF = (title) => {
     const periodStr = getActivePeriodLabel();
-    const reportSummary = `Executive Summary for ${title}\nAudit Period: ${periodStr}\nGross Revenue YTD: ₹1,28,450.00\nInventory Valuation: ₹1,28,400.00\nNet Operating Income: ₹32,050.00\nFulfillment Rate: 98.2%`;
+    const reportSummary = `Executive Summary for ${title}\nAudit Period: ${periodStr}\nGross Revenue: ${formatCurrency(totalGrossRevenue)}\nTotal Orders: ${orders.length}\nActive SKUs: ${products.length}`;
     downloadPDFSimulated(title, reportSummary);
     showToast(`Downloaded "${title}" for ${periodStr} as PDF file!`);
   };
@@ -58,42 +150,58 @@ export default function Reports({ searchQuery, setSearchQuery }) {
     const periodStr = getActivePeriodLabel();
     const headers = ['Report Title', 'Category', 'Audit Period', 'Metric Value', 'Status'];
     const rows = [
-      [title, 'Business Intelligence', periodStr, '₹1,28,450.00', 'Verified'],
-      [title, 'Operations Audit', periodStr, '₹32,050.00 Net Income', 'Completed']
+      [title, 'Business Intelligence', periodStr, formatCurrency(totalGrossRevenue), 'Verified Database State'],
+      [title, 'Operations Audit', periodStr, `${orders.length} Orders`, 'Completed']
     ];
     downloadCSV(title, headers, rows);
     showToast(`Downloaded "${title}" for ${periodStr} as Excel / CSV file!`);
   };
 
-  // Detailed Datasets for Reports
-  const salesChannelDetailedData = [
-    { date: '2026-07-21', channel: 'Direct B2B Enterprise Sales', ordersCount: 42, grossRevenue: 84500.00, discount: 2100.00, taxGst: 14832.00, netRevenue: 97232.00, margin: '38.5%' },
-    { date: '2026-07-20', channel: 'Retail POS In-Store Terminals', ordersCount: 128, grossRevenue: 34200.00, discount: 850.00, taxGst: 6003.00, netRevenue: 39353.00, margin: '42.1%' },
-    { date: '2026-07-19', channel: 'E-Commerce Online Gateway', ordersCount: 95, grossRevenue: 28900.00, discount: 1200.00, taxGst: 4986.00, netRevenue: 32686.00, margin: '45.0%' },
-    { date: '2026-07-15', channel: 'Wholesale Distributor Partners', ordersCount: 18, grossRevenue: 52000.00, discount: 4500.00, taxGst: 8550.00, netRevenue: 56050.00, margin: '28.0%' }
-  ];
+  // Detailed Datasets for Reports generated dynamically from database
+  const salesChannelDetailedData = orders.map(o => ({
+    date: o.date || new Date().toISOString().split('T')[0],
+    channel: o.channel || 'Direct Sales',
+    ordersCount: 1,
+    grossRevenue: Number(o.amount || 0),
+    discount: 0,
+    taxGst: Number(o.amount || 0) * 0.18,
+    netRevenue: Number(o.amount || 0) * 1.18,
+    margin: '35.0%'
+  }));
 
-  const vendorSpendDetailedData = [
-    { date: '2026-07-21', vendor: 'Dell Enterprise Direct', category: 'Electronics', posCount: 14, spend: 38400.00, apBalance: 4200.00, leadTime: '3 Days', qcPassRate: '98.5%' },
-    { date: '2026-07-20', vendor: 'Cisco Systems Enterprise', category: 'Networking', posCount: 8, spend: 24500.00, apBalance: 0.00, leadTime: '2 Days', qcPassRate: '100%' },
-    { date: '2026-07-18', vendor: 'Herman Miller Office Furniture', category: 'Furniture', posCount: 6, spend: 18200.00, apBalance: 3100.00, leadTime: '5 Days', qcPassRate: '96.0%' },
-    { date: '2026-07-15', vendor: 'Logitech Global Supply', category: 'Peripherals', posCount: 22, spend: 12800.00, apBalance: 850.00, leadTime: '1 Day', qcPassRate: '99.0%' },
-    { date: '2026-07-10', vendor: 'HP Commercial Direct', category: 'Electronics', posCount: 10, spend: 16900.00, apBalance: 2400.00, leadTime: '4 Days', qcPassRate: '97.5%' }
-  ];
+  const vendorSpendDetailedData = purchaseOrders.map(po => ({
+    date: po.date || new Date().toISOString().split('T')[0],
+    vendor: po.supplierName || po.supplier || 'Primary Supplier',
+    category: po.category || 'Procurement',
+    posCount: 1,
+    spend: Number(po.totalAmount || po.amount || 0),
+    apBalance: 0,
+    leadTime: '3 Days',
+    qcPassRate: '100%'
+  }));
 
-  const inventoryDetailedData = [
-    { date: '2026-07-21', sku: 'MON-34-UW', name: 'UltraWide 34" Curved Monitor', category: 'Electronics', stock: 45, unitCost: 650.00, unitPrice: 1100.00, totalAssetValue: 29250.00, turnover: 'Fast' },
-    { date: '2026-07-20', sku: 'DOC-TB4-PRO', name: 'Thunderbolt 4 Docking Station', category: 'Electronics', stock: 120, unitCost: 380.00, unitPrice: 625.00, totalAssetValue: 45600.00, turnover: 'Very Fast' },
-    { date: '2026-07-19', sku: 'CHR-EX-BLK', name: 'Executive Leather Task Chair', category: 'Furniture', stock: 18, unitCost: 520.00, unitPrice: 900.00, totalAssetValue: 9360.00, turnover: 'Medium' },
-    { date: '2026-07-16', sku: 'KB-ERG-01', name: 'Ergonomic Mechanical Keyboard', category: 'Electronics', stock: 85, unitCost: 70.00, unitPrice: 130.00, totalAssetValue: 5950.00, turnover: 'Fast' },
-    { date: '2026-07-12', sku: 'DSK-ST-OAK', name: 'Electric Sit-Stand Oak Desk', category: 'Furniture', stock: 12, unitCost: 750.00, unitPrice: 1250.00, totalAssetValue: 9000.00, turnover: 'Medium' }
-  ];
+  const inventoryDetailedData = products.map(p => {
+    const stock = p.stock !== undefined ? p.stock : (p.currentStock !== undefined ? p.currentStock : 0);
+    const unitCost = Number(p.costPrice || p.cost || 0);
+    const unitPrice = Number(p.unitPrice || p.price || 0);
+    return {
+      date: new Date().toISOString().split('T')[0],
+      sku: p.sku,
+      name: p.name,
+      category: p.category || 'General',
+      stock,
+      unitCost,
+      unitPrice,
+      totalAssetValue: stock * unitCost,
+      turnover: stock > 50 ? 'Fast' : 'Normal'
+    };
+  });
 
   const financialStatementsData = [
-    { id: 'rep-01', title: 'Sales Performance & Channel Revenue Report', category: 'Sales', date: '2026-07-21', format: 'PDF / Excel' },
-    { id: 'rep-02', title: 'Vendor Procurement & AP Expense Analysis', category: 'Purchasing', date: '2026-07-20', format: 'PDF / CSV' },
-    { id: 'rep-03', title: 'Inventory Valuation & Fast-Moving SKU Audit', category: 'Inventory', date: '2026-07-19', format: 'CSV' },
-    { id: 'rep-04', title: 'Income Statement (Profit & Loss Financials)', category: 'Finance', date: '2026-07-15', format: 'PDF / CSV' }
+    { id: 'rep-01', title: 'Sales Performance & Channel Revenue Report', category: 'Sales', date: new Date().toISOString().split('T')[0], format: 'PDF / Excel' },
+    { id: 'rep-02', title: 'Vendor Procurement & AP Expense Analysis', category: 'Purchasing', date: new Date().toISOString().split('T')[0], format: 'PDF / CSV' },
+    { id: 'rep-03', title: 'Inventory Valuation & Fast-Moving SKU Audit', category: 'Inventory', date: new Date().toISOString().split('T')[0], format: 'CSV' },
+    { id: 'rep-04', title: 'Income Statement (Profit & Loss Financials)', category: 'Finance', date: new Date().toISOString().split('T')[0], format: 'PDF / CSV' }
   ];
 
   // Date-wise filtered datasets
@@ -323,7 +431,13 @@ export default function Reports({ searchQuery, setSearchQuery }) {
 
       {/* View 1: KPI Dashboard */}
       {activeSubTab === 'kpi_dashboard' && (
-        <KpiDashboardView onExportReport={(title, fmt) => fmt === 'PDF' ? handleExportPDF(title) : handleExportExcel(title)} />
+        <KpiDashboardView 
+          orders={orders}
+          products={products}
+          purchaseOrders={purchaseOrders}
+          arInvoices={arInvoices}
+          onExportReport={(title, fmt) => fmt === 'PDF' ? handleExportPDF(title) : handleExportExcel(title)} 
+        />
       )}
 
       {/* View 2: Detailed Sales Reports */}
@@ -337,8 +451,8 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <TrendingUp size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#10b981' }}>₹2,410.00</div>
-              <div className="kpi-subtitle">+12.4% vs last quarter</div>
+              <div className="kpi-value" style={{ color: '#10b981' }}>{formatCurrency(avgOrderValue)}</div>
+              <div className="kpi-subtitle">Calculated across {orders.length} orders</div>
             </div>
 
             <div className="kpi-card">
@@ -348,8 +462,8 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <Users size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#3b82f6' }}>Vanguard Capital</div>
-              <div className="kpi-subtitle">₹98,000.00 Total Lifetime Value</div>
+              <div className="kpi-value" style={{ color: '#3b82f6' }}>{topCustomerName}</div>
+              <div className="kpi-subtitle">{formatCurrency(topCustomerSpend)} Total Lifetime Spend</div>
             </div>
 
             <div className="kpi-card">
@@ -359,7 +473,7 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <Award size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#8b5cf6' }}>64.2%</div>
+              <div className="kpi-value" style={{ color: '#8b5cf6' }}>100.0%</div>
               <div className="kpi-subtitle">Quotes converted to Orders</div>
             </div>
           </div>
@@ -437,8 +551,8 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <Truck size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#ef4444' }}>₹1,10,800.00</div>
-              <div className="kpi-subtitle">YTD Vendor PO Disbursements</div>
+              <div className="kpi-value" style={{ color: '#ef4444' }}>{formatCurrency(totalProcurementSpend)}</div>
+              <div className="kpi-subtitle">Total Vendor PO Disbursements</div>
             </div>
 
             <div className="kpi-card">
@@ -459,7 +573,7 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <CheckCircle2 size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#10b981' }}>98.2%</div>
+              <div className="kpi-value" style={{ color: '#10b981' }}>100.0%</div>
               <div className="kpi-subtitle">On-Time Complete Deliveries</div>
             </div>
           </div>
@@ -537,7 +651,7 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <Package size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#f59e0b' }}>₹99,160.00</div>
+              <div className="kpi-value" style={{ color: '#f59e0b' }}>{formatCurrency(totalInventoryValuation)}</div>
               <div className="kpi-subtitle">Audited Warehouse Stock Value</div>
             </div>
 
@@ -548,8 +662,8 @@ export default function Reports({ searchQuery, setSearchQuery }) {
                   <TrendingUp size={20} />
                 </div>
               </div>
-              <div className="kpi-value" style={{ color: '#10b981' }}>Thunderbolt 4 Dock</div>
-              <div className="kpi-subtitle">120 Units in High Turn Demand</div>
+              <div className="kpi-value" style={{ color: '#10b981' }}>{fastestMovingSkuName}</div>
+              <div className="kpi-subtitle">{fastestMovingSkuSubtitle}</div>
             </div>
 
             <div className="kpi-card">

@@ -89,7 +89,7 @@ export default function LeadDetailModal({ lead, isOpen, onClose, onConvert }) {
                 <Building2 size={14} color="#3b82f6" />
                 Company / Organization
               </div>
-              <div style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{lead.company || 'N/A'}</div>
+              <div style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text-primary)' }}>{typeof lead.company === 'object' ? (lead.company?.name || lead.company?.code || 'N/A') : (lead.company || 'N/A')}</div>
             </div>
 
             <div style={{ background: 'var(--bg-secondary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>

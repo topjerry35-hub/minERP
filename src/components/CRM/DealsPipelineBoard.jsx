@@ -253,7 +253,7 @@ export default function DealsPipelineBoard({
                         <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Building2 size={14} color="var(--text-muted)" />
-                            {deal.company || 'Enterprise Account'}
+                            {typeof deal.company === 'object' ? (deal.company?.name || deal.company?.code || 'Enterprise Account') : (deal.company || 'Enterprise Account')}
                           </div>
                         </td>
 
@@ -382,7 +382,7 @@ export default function DealsPipelineBoard({
                         </span>
                       </div>
 
-                      <div className="deal-company">{deal.company} • {deal.contact}</div>
+                      <div className="deal-company">{typeof deal.company === 'object' ? (deal.company?.name || deal.company?.code || 'Enterprise') : (deal.company || 'Enterprise')} • {deal.contact}</div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
                         <div className="deal-amount" style={{ color: '#10b981' }}>{formatCurrency(deal.amount)}</div>

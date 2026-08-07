@@ -26,7 +26,7 @@ import AddCompanyModal from '../../components/Settings/AddCompanyModal';
 import AddOfficeModal from '../../components/Settings/AddOfficeModal';
 import AddRoleModal from '../../components/Settings/AddRoleModal';
 import EditUserModal from '../../components/Settings/EditUserModal';
-import { saveUserToDB, saveRoleToDB } from '../../services/api';
+import { saveUserToDB, saveRoleToDB, resetDatabaseToCleanState } from '../../services/api';
 
 export default function Settings({ 
   searchQuery, 
@@ -465,7 +465,7 @@ export default function Settings({
                     <td style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{u.email}</td>
                     <td>
                       <span style={{ fontWeight: '600', color: 'var(--accent-blue)', fontSize: '0.82rem' }}>
-                        {u.company || 'minERP Enterprise HQ'}
+                        {typeof u.company === 'object' ? (u.company?.name || u.company?.code || 'minERP Enterprise HQ') : (u.company || 'minERP Enterprise HQ')}
                       </span>
                     </td>
                     <td>
@@ -811,6 +811,27 @@ export default function Settings({
                   Restore JSON File
                 </button>
               </div>
+            </div>
+
+            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#ef4444' }}>Clear Default/Mock Data & Reset Database</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Purge local default mock data and reset central database to clean state</div>
+              </div>
+              <button 
+                className="btn-secondary" 
+                style={{ backgroundColor: '#ef4444', color: '#ffffff', borderColor: '#ef4444' }}
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to clear all default/mock data and reset the database to a clean state?")) {
+                    const res = await resetDatabaseToCleanState();
+                    if (res && res.message) setToastMessage(res.message);
+                    setTimeout(() => { window.location.reload(); }, 800);
+                  }
+                }}
+              >
+                <Trash2 size={16} />
+                Clear & Reset Database
+              </button>
             </div>
           </div>
         </div>

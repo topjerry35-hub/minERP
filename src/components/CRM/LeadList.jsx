@@ -180,7 +180,7 @@ export default function LeadList({
                       <td>
                         <div style={{ fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Building2 size={14} color="var(--text-muted)" />
-                          {l.company || 'N/A'}
+                          {typeof l.company === 'object' ? (l.company?.name || l.company?.code || 'N/A') : (l.company || 'N/A')}
                         </div>
                       </td>
 

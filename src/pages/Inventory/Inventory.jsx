@@ -11,12 +11,6 @@ import AddProductModal from '../../components/Inventory/AddProductModal';
 import ImportModal from '../../components/Inventory/ImportModal';
 import { fetchProducts, createProduct, updateProduct, fetchCategories, fetchInventoryLogs } from '../../services/api';
 
-import { 
-  generateProducts, 
-  generateCategories, 
-  generateInventoryLogs 
-} from '../../utils/mockDataGenerator';
-
 export default function Inventory({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('products');
 
@@ -32,20 +26,20 @@ export default function Inventory({ searchQuery, setSearchQuery }) {
   const [toastMessage, setToastMessage] = useState(null);
 
   // Database Datasets
-  const [products, setProducts] = useState(() => generateProducts(100));
-  const [categories, setCategories] = useState(() => generateCategories());
-  const [inventoryLogs, setInventoryLogs] = useState(() => generateInventoryLogs(100));
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [inventoryLogs, setInventoryLogs] = useState([]);
 
   useEffect(() => {
     async function loadProducts() {
       const data = await fetchProducts();
-      if (data && data.length > 0) setProducts(data);
+      if (data) setProducts(data);
 
       const cats = await fetchCategories();
-      if (cats && cats.length > 0) setCategories(cats);
+      if (cats) setCategories(cats);
 
       const logs = await fetchInventoryLogs();
-      if (logs && logs.length > 0) setInventoryLogs(logs);
+      if (logs) setInventoryLogs(logs);
     }
     loadProducts();
   }, []);

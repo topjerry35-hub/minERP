@@ -24,15 +24,8 @@ import {
   createAttendanceLog, 
   fetchLeaveRequests, 
   createLeaveRequest, 
-  fetchPayrollHistory 
+  fetchPayrollHistory
 } from '../../services/api';
-
-import { 
-  generateEmployees, 
-  generateAttendanceLogs, 
-  generateLeaveRequests, 
-  generatePayrollHistory 
-} from '../../utils/mockDataGenerator';
 
 export default function HR({ searchQuery, setSearchQuery }) {
   const [activeSubTab, setActiveSubTab] = useState('employees');
@@ -53,24 +46,24 @@ export default function HR({ searchQuery, setSearchQuery }) {
   const [salary, setSalary] = useState('75000');
 
   // Database Datasets
-  const [employees, setEmployees] = useState(() => generateEmployees(100));
-  const [attendanceLogs, setAttendanceLogs] = useState(() => generateAttendanceLogs(100));
-  const [leaveRequests, setLeaveRequests] = useState(() => generateLeaveRequests(100));
-  const [payrollHistory, setPayrollHistory] = useState(() => generatePayrollHistory(100));
+  const [employees, setEmployees] = useState([]);
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [payrollHistory, setPayrollHistory] = useState([]);
 
   useEffect(() => {
     async function loadDbData() {
       const emps = await fetchEmployees();
-      if (emps && emps.length > 0) setEmployees(emps);
+      if (emps) setEmployees(emps);
 
       const atts = await fetchAttendanceLogs();
-      if (atts && atts.length > 0) setAttendanceLogs(atts);
+      if (atts) setAttendanceLogs(atts);
 
       const lvs = await fetchLeaveRequests();
-      if (lvs && lvs.length > 0) setLeaveRequests(lvs);
+      if (lvs) setLeaveRequests(lvs);
 
       const pay = await fetchPayrollHistory();
-      if (pay && pay.length > 0) setPayrollHistory(pay);
+      if (pay) setPayrollHistory(pay);
     }
     loadDbData();
   }, []);

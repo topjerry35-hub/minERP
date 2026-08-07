@@ -3,38 +3,10 @@
  * Provides persistent Database operations across all Enterprise modules (Offline & Online mode)
  * All values are fetched from and stored directly in the Database engine.
  */
-import { 
-  generateOrders, 
-  generateProducts, 
-  generateCategories,
-  generateInventoryLogs,
-  generateQuotations,
-  generateCustomers, 
-  generateInvoices,
-  generateCustomerPayments,
-  generateSalesReturns,
-  generateSuppliers,
-  generatePurchaseOrders,
-  generateGoodsReceipts,
-  generateSupplierPayments,
-  generateLeads,
-  generateDeals,
-  generateActivities,
-  generateEmployees, 
-  generateAttendanceLogs,
-  generateLeaveRequests,
-  generatePayrollHistory,
-  generateBankAccounts,
-  generateArInvoices,
-  generateApBills,
-  generateChartOfAccounts,
-  generateJournalEntries 
-} from '../utils/mockDataGenerator';
-
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
   ? import.meta.env.VITE_API_URL 
   : 'http://localhost:5005/api';
-const DB_KEY = 'minerp_database_v2';
+const DB_KEY = 'minerp_database_v3';
 
 // Central Database Engine (LocalStorage / API fallback)
 export function getLocalDB() {
@@ -46,34 +18,49 @@ export function getLocalDB() {
     console.error('Failed to parse local DB', e);
   }
 
-  // Seed Initial Database with 100+ Enterprise Records per collection
+  // Initial Clean Database structure without mock data
   const seedDB = {
-    products: generateProducts(100),
-    categories: generateCategories(),
-    inventoryLogs: generateInventoryLogs(100),
-    orders: generateOrders(100),
-    quotations: generateQuotations(100),
-    customers: generateCustomers(100),
-    invoices: generateInvoices(100),
-    customerPayments: generateCustomerPayments(100),
-    salesReturns: generateSalesReturns(100),
-    suppliers: generateSuppliers(100),
-    purchaseOrders: generatePurchaseOrders(100),
-    goodsReceipts: generateGoodsReceipts(100),
-    supplierPayments: generateSupplierPayments(100),
-    leads: generateLeads(100),
-    deals: generateDeals(100),
-    activities: generateActivities(100),
-    employees: generateEmployees(100),
-    attendanceLogs: generateAttendanceLogs(100),
-    leaveRequests: generateLeaveRequests(100),
-    payrollHistory: generatePayrollHistory(100),
-    bankAccounts: generateBankAccounts(100),
-    arInvoices: generateArInvoices(100),
-    apBills: generateApBills(100),
-    accounts: generateChartOfAccounts(100),
-    journalEntries: generateJournalEntries(100),
-    finance: { grossRevenue: 1284500, operatingExpenses: 964000, netProfit: 320500 },
+    products: [],
+    categories: [],
+    inventoryLogs: [],
+    orders: [],
+    quotations: [],
+    customers: [],
+    invoices: [],
+    customerPayments: [],
+    salesReturns: [],
+    suppliers: [],
+    purchaseOrders: [],
+    goodsReceipts: [],
+    supplierPayments: [],
+    leads: [],
+    deals: [],
+    activities: [],
+    employees: [],
+    attendanceLogs: [],
+    leaveRequests: [],
+    payrollHistory: [],
+    bankAccounts: [
+      { id: 'BNK-001', name: 'Operating Checking Account', accountNumber: '****-4921', type: 'Checking', balance: 50000.00 },
+      { id: 'BNK-002', name: 'Corporate Reserve Savings', accountNumber: '****-8812', type: 'Savings', balance: 25000.00 },
+      { id: 'BNK-003', name: 'Petty Cash Liquidity Vault', accountNumber: 'CASH-001', type: 'Cash Vault', balance: 5000.00 }
+    ],
+    arInvoices: [],
+    accounts: [
+      { code: '1010', name: 'Cash & Cash Equivalents', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+      { code: '1020', name: 'Accounts Receivable (AR)', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+      { code: '1030', name: 'Merchandise Inventory Asset', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+      { code: '2010', name: 'Accounts Payable (AP)', type: 'Liability', category: 'Current Liabilities', balance: 0.00 },
+      { code: '2020', name: 'GST / VAT Tax Payable', type: 'Liability', category: 'Current Liabilities', balance: 0.00 },
+      { code: '3010', name: 'Owners Equity & Retained Earnings', type: 'Equity', category: 'Equity', balance: 0.00 },
+      { code: '4010', name: 'Sales Revenue', type: 'Revenue', category: 'Operating Income', balance: 0.00 },
+      { code: '4020', name: 'Services & Consulting Revenue', type: 'Revenue', category: 'Operating Income', balance: 0.00 },
+      { code: '5010', name: 'Cost of Goods Sold (COGS)', type: 'Expense', category: 'Cost of Sales', balance: 0.00 },
+      { code: '5020', name: 'Salaries & Payroll Expenses', type: 'Expense', category: 'Operating Expenses', balance: 0.00 },
+      { code: '5030', name: 'Office Rent & Utility Expenses', type: 'Expense', category: 'Operating Expenses', balance: 0.00 }
+    ],
+    journalEntries: [],
+    finance: { grossRevenue: 0, operatingExpenses: 0, netProfit: 0 },
     companies: [
       { id: 'CMP-001', name: 'Company 1 - minERP Primary Enterprise HQ', code: 'CMP-1', taxId: 'GSTIN-27AABCU9603R1ZM', currency: 'INR (₹)', country: 'IN', email: 'company1.ops@minerp.com', phone: '+91 22 5550 1000', address: '100 Enterprise Way, Suite 500, Mumbai, MH', status: 'Active' },
       { id: 'CMP-002', name: 'Company 2 - minERP Global Solutions Ltd.', code: 'CMP-2', taxId: 'VAT-992018-UK', currency: 'GBP (£)', country: 'GB', email: 'company2.ops@minerp.com', phone: '+44 20 7946 0912', address: '14 Docklands Business Park, London, UK', status: 'Active' }
@@ -95,9 +82,8 @@ export function getLocalDB() {
   if (!db) {
     db = seedDB;
   } else {
-    // Fill in any missing or empty collections
     Object.keys(seedDB).forEach(key => {
-      if (!db[key] || (Array.isArray(db[key]) && db[key].length === 0)) {
+      if (db[key] === undefined) {
         db[key] = seedDB[key];
       }
     });
@@ -115,18 +101,39 @@ export function saveLocalDB(db) {
   }
 }
 
+export async function resetDatabaseToCleanState() {
+  if (await isBackendAvailable()) {
+    try {
+      await fetch(`${API_BASE_URL}/reset-database`, { method: 'POST' });
+    } catch (e) {
+      console.error('Backend reset request failed:', e);
+    }
+  }
+  try {
+    localStorage.removeItem(DB_KEY);
+    localStorage.removeItem('minerp_companies');
+    localStorage.removeItem('minerp_offices');
+    localStorage.removeItem('minerp_roles');
+    localStorage.removeItem('minerp_users');
+  } catch (e) {
+    console.error('Local storage purge failed:', e);
+  }
+  getLocalDB();
+  return { success: true, message: 'Database reset cleanly to empty state' };
+}
+
 // Backend availability status
 let backendOnlineStatus = null;
 let lastCheckTime = 0;
 
 async function isBackendAvailable() {
   const now = Date.now();
-  if (backendOnlineStatus !== null && (now - lastCheckTime < 10000)) {
-    return backendOnlineStatus;
+  if (backendOnlineStatus === true && (now - lastCheckTime < 10000)) {
+    return true;
   }
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 600);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
     const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
     backendOnlineStatus = res.ok;
@@ -154,28 +161,28 @@ export async function fetchHealth() {
    PRODUCTS DATABASE CRUD
    ========================================== */
 export async function fetchProducts() {
-  if (await isBackendAvailable()) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/products`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) return data;
-      }
-    } catch (e) { backendOnlineStatus = false; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/products`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+    }
+  } catch (e) {
+    // API server temporarily unreachable
   }
   return getLocalDB().products || [];
 }
 
 export async function createProduct(productData) {
-  if (await isBackendAvailable()) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productData)
-      });
-      if (res.ok) return await res.json();
-    } catch (e) { backendOnlineStatus = false; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // API server temporarily unreachable
   }
   const db = getLocalDB();
   const unitPrice = parseFloat(productData.unitPrice !== undefined ? productData.unitPrice : (productData.price !== undefined ? productData.price : 0));
@@ -200,15 +207,15 @@ export async function createProduct(productData) {
 }
 
 export async function updateProduct(sku, productData) {
-  if (await isBackendAvailable()) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(sku)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productData)
-      });
-      if (res.ok) return await res.json();
-    } catch (e) { backendOnlineStatus = false; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(sku)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // API server temporarily unreachable
   }
   const db = getLocalDB();
   db.products = db.products.map(p => p.sku === sku ? { ...p, ...productData } : p);
@@ -217,6 +224,17 @@ export async function updateProduct(sku, productData) {
 }
 
 export async function fetchCategories() {
+  const prods = await fetchProducts();
+  if (Array.isArray(prods) && prods.length > 0) {
+    const uniqueCats = Array.from(new Set(prods.map(p => p.category).filter(Boolean)));
+    if (uniqueCats.length > 0) {
+      return uniqueCats.map((name, i) => ({ 
+        id: `CAT-${100 + i}`, 
+        name, 
+        itemsCount: prods.filter(p => p.category === name).length 
+      }));
+    }
+  }
   return getLocalDB().categories || [];
 }
 
@@ -434,10 +452,26 @@ export async function updateCustomer(id, customerData) {
    PURCHASING DATABASE CRUD
    ========================================== */
 export async function fetchSuppliers() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/suppliers`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().suppliers || [];
 }
 
 export async function createSupplier(supplierData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/suppliers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(supplierData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newSup = { id: supplierData.id || `SUP-${Math.floor(100 + Math.random() * 900)}`, ...supplierData };
   db.suppliers = [newSup, ...db.suppliers];
@@ -446,10 +480,26 @@ export async function createSupplier(supplierData) {
 }
 
 export async function fetchPurchaseOrders() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/purchase-orders`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().purchaseOrders || [];
 }
 
 export async function createPurchaseOrder(poData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/purchase-orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(poData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newPo = { id: poData.id || `PO-2026-${Math.floor(800 + Math.random() * 200)}`, ...poData };
   db.purchaseOrders = [newPo, ...db.purchaseOrders];
@@ -458,10 +508,26 @@ export async function createPurchaseOrder(poData) {
 }
 
 export async function fetchGoodsReceipts() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/goods-receipts`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().goodsReceipts || [];
 }
 
 export async function createGoodsReceipt(grnData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/goods-receipts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(grnData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newGrn = { id: `GRN-2026-${Math.floor(100 + Math.random() * 900)}`, ...grnData };
   db.goodsReceipts = [newGrn, ...db.goodsReceipts];
@@ -470,10 +536,26 @@ export async function createGoodsReceipt(grnData) {
 }
 
 export async function fetchSupplierPayments() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/supplier-payments`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().supplierPayments || [];
 }
 
 export async function createSupplierPayment(paymentData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/supplier-payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newPayment = { id: `PAY-2026-${Math.floor(100 + Math.random() * 900)}`, ...paymentData };
   db.supplierPayments = [newPayment, ...db.supplierPayments];
@@ -485,10 +567,26 @@ export async function createSupplierPayment(paymentData) {
    CRM DATABASE CRUD
    ========================================== */
 export async function fetchLeads() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/leads`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().leads || [];
 }
 
 export async function createLead(leadData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(leadData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newLead = { id: leadData.id || `LEAD-${Math.floor(500 + Math.random() * 500)}`, ...leadData };
   db.leads = [newLead, ...db.leads];
@@ -497,10 +595,26 @@ export async function createLead(leadData) {
 }
 
 export async function fetchDeals() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/deals`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().deals || [];
 }
 
 export async function createDeal(dealData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/deals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dealData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newDeal = { id: dealData.id || `DEAL-${Math.floor(100 + Math.random() * 900)}`, ...dealData };
   db.deals = [newDeal, ...db.deals];
@@ -509,6 +623,16 @@ export async function createDeal(dealData) {
 }
 
 export async function updateDealStage(id, stage) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/deals/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage })
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   db.deals = db.deals.map(d => d.id === id ? { ...d, stage } : d);
   saveLocalDB(db);
@@ -516,10 +640,26 @@ export async function updateDealStage(id, stage) {
 }
 
 export async function fetchActivities() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/activities`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().activities || [];
 }
 
 export async function createActivity(activityData) {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(activityData)
+      });
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   const newAct = { id: activityData.id || `ACT-${Math.floor(900 + Math.random() * 100)}`, ...activityData };
   db.activities = [newAct, ...db.activities];
@@ -593,26 +733,78 @@ export async function fetchPayrollHistory() {
    ACCOUNTING & FINANCE DATABASE CRUD
    ========================================== */
 export async function fetchFinanceSummary() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/finance/summary`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   const db = getLocalDB();
   return db.finance || { grossRevenue: 1284500, operatingExpenses: 964000, netProfit: 320500 };
 }
 
 export async function fetchBankAccounts() {
-  return getLocalDB().bankAccounts || [];
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/bank-accounts`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
+    } catch (e) { backendOnlineStatus = false; }
+  }
+  const localBanks = getLocalDB().bankAccounts || [];
+  if (localBanks.length > 0) return localBanks;
+
+  const defaultBanks = [
+    { id: 'BNK-001', name: 'Operating Checking Account', accountNumber: '****-4921', type: 'Checking', balance: 50000.00 },
+    { id: 'BNK-002', name: 'Corporate Reserve Savings', accountNumber: '****-8812', type: 'Savings', balance: 25000.00 },
+    { id: 'BNK-003', name: 'Petty Cash Liquidity Vault', accountNumber: 'CASH-001', type: 'Cash Vault', balance: 5000.00 }
+  ];
+  const db = getLocalDB();
+  db.bankAccounts = defaultBanks;
+  saveLocalDB(db);
+  return defaultBanks;
 }
 
 export async function updateBankAccountBalance(id, newBalance) {
   const db = getLocalDB();
-  db.bankAccounts = db.bankAccounts.map(b => b.id === id ? { ...b, balance: newBalance } : b);
+  db.bankAccounts = (db.bankAccounts || []).map(b => (b.id === id || b.name === id) ? { ...b, balance: newBalance } : b);
   saveLocalDB(db);
   return { id, newBalance };
 }
 
+export async function createBankAccount(bankData) {
+  const db = getLocalDB();
+  const newAccount = {
+    id: bankData.id || `BNK-${Math.floor(100 + Math.random() * 900)}`,
+    name: bankData.name,
+    accountNumber: bankData.accountNumber || `****-${Math.floor(1000 + Math.random() * 9000)}`,
+    type: bankData.type || 'Checking',
+    balance: Number(bankData.balance || 0)
+  };
+  db.bankAccounts = [...(db.bankAccounts || []), newAccount];
+  saveLocalDB(db);
+  return newAccount;
+}
+
 export async function fetchArInvoices() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/ar-invoices`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().arInvoices || [];
 }
 
 export async function fetchApBills() {
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/ap-bills`);
+      if (res.ok) return await res.json();
+    } catch (e) { backendOnlineStatus = false; }
+  }
   return getLocalDB().apBills || [];
 }
 
@@ -624,7 +816,35 @@ export async function updateApBill(billId, billData) {
 }
 
 export async function fetchAccounts() {
-  return getLocalDB().accounts || [];
+  if (await isBackendAvailable()) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/accounts`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+      }
+    } catch (e) { backendOnlineStatus = false; }
+  }
+  const localAccs = getLocalDB().accounts || [];
+  if (localAccs.length > 0) return localAccs;
+
+  const defaultAccs = [
+    { code: '1010', name: 'Cash & Cash Equivalents', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+    { code: '1020', name: 'Accounts Receivable (AR)', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+    { code: '1030', name: 'Merchandise Inventory Asset', type: 'Asset', category: 'Current Assets', balance: 0.00 },
+    { code: '2010', name: 'Accounts Payable (AP)', type: 'Liability', category: 'Current Liabilities', balance: 0.00 },
+    { code: '2020', name: 'GST / VAT Tax Payable', type: 'Liability', category: 'Current Liabilities', balance: 0.00 },
+    { code: '3010', name: 'Owners Equity & Retained Earnings', type: 'Equity', category: 'Equity', balance: 0.00 },
+    { code: '4010', name: 'Sales Revenue', type: 'Revenue', category: 'Operating Income', balance: 0.00 },
+    { code: '4020', name: 'Services & Consulting Revenue', type: 'Revenue', category: 'Operating Income', balance: 0.00 },
+    { code: '5010', name: 'Cost of Goods Sold (COGS)', type: 'Expense', category: 'Cost of Sales', balance: 0.00 },
+    { code: '5020', name: 'Salaries & Payroll Expenses', type: 'Expense', category: 'Operating Expenses', balance: 0.00 },
+    { code: '5030', name: 'Office Rent & Utility Expenses', type: 'Expense', category: 'Operating Expenses', balance: 0.00 }
+  ];
+  const db = getLocalDB();
+  db.accounts = defaultAccs;
+  saveLocalDB(db);
+  return defaultAccs;
 }
 
 export async function fetchJournalEntries() {

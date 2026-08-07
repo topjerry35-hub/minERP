@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/start-dev.js",
+    "start": "node server/start-dev.js",
     "server": "node server/server.js",
+    "vite": "vite",
     "seed": "node server/seed.js",
     "build": "vite build",
     "test": "vitest run",

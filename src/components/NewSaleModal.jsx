@@ -227,7 +227,7 @@ export default function NewSaleModal({
                 >
                   <option value="Walk-in Retail Customer">Walk-in Retail Customer</option>
                   {customers.map(c => (
-                    <option key={c.id} value={c.name}>{c.name} ({c.company || 'Enterprise'})</option>
+                    <option key={c.id} value={c.name}>{c.name} ({typeof c.company === 'object' ? (c.company?.name || c.company?.code || 'Enterprise') : (c.company || 'Enterprise')})</option>
                   ))}
                   <option value="Custom">+ Enter Walk-in / Custom Name</option>
                 </select>
