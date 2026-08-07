@@ -98,12 +98,67 @@ export function getLocalDB() {
   return db;
 }
 
+let syncDebounceTimer = null;
+let lastPullTime = 0;
+
+export async function pullCloudSync() {
+  const now = Date.now();
+  if (now - lastPullTime < 3000) {
+    return getLocalDB();
+  }
+  lastPullTime = now;
+  try {
+    const res = await fetch('/api/sync');
+    if (res.ok) {
+      const remoteData = await res.json();
+      if (remoteData && typeof remoteData === 'object' && !remoteData.empty) {
+        const local = getLocalDB();
+        const merged = { ...local };
+        
+        ['products', 'categories', 'orders', 'quotations', 'customers', 'invoices', 'customerPayments', 'suppliers', 'purchaseOrders', 'leads', 'deals', 'activities', 'employees', 'accounts', 'journalEntries', 'bankAccounts', 'companies', 'offices', 'roles', 'users'].forEach(key => {
+          if (Array.isArray(remoteData[key]) && remoteData[key].length > 0) {
+            const existingMap = new Map((local[key] || []).map(item => [item.id || item.sku || item.code || JSON.stringify(item), item]));
+            remoteData[key].forEach(rItem => {
+              const id = rItem.id || rItem.sku || rItem.code || JSON.stringify(rItem);
+              existingMap.set(id, rItem);
+            });
+            merged[key] = Array.from(existingMap.values());
+          }
+        });
+        
+        localStorage.setItem(DB_KEY, JSON.stringify(merged));
+        return merged;
+      }
+    }
+  } catch (e) {
+    // Cloud sync offline/bypassed
+  }
+  return getLocalDB();
+}
+
+export async function pushCloudSync(db) {
+  try {
+    await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(db)
+    });
+  } catch (e) {
+    // Silent fallback
+  }
+}
+
 export function saveLocalDB(db) {
   try {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
   } catch (e) {
     console.error('Failed to save local DB', e);
   }
+
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(() => {
+    pushCloudSync(db);
+  }, 350);
 }
 
 export async function resetDatabaseToCleanState() {
