@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -15,9 +15,62 @@ import {
   LogOut,
   Lock
 } from 'lucide-react';
+import { 
+  fetchProducts, 
+  fetchOrders, 
+  fetchCustomers, 
+  fetchSuppliers, 
+  fetchEmployees,
+  fetchInvoices
+} from '../services/api';
 
 export default function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, user, roles = [], onLogout }) {
   const role = user?.role || 'Admin';
+
+  const [dbCounts, setDbCounts] = useState({
+    sales: 0,
+    lowStock: 0,
+    products: 0,
+    customers: 0,
+    suppliers: 0,
+    employees: 0,
+    invoices: 0
+  });
+
+  useEffect(() => {
+    async function loadCounts() {
+      try {
+        const prods = await fetchProducts();
+        const orders = await fetchOrders();
+        const custs = await fetchCustomers();
+        const sups = await fetchSuppliers();
+        const emps = await fetchEmployees();
+        const invs = await fetchInvoices();
+
+        const pList = prods || [];
+        const oList = orders || [];
+        const lowS = pList.filter(p => {
+          const s = Number(p.stock) || 0;
+          const min = Number(p.minStock !== undefined ? p.minStock : (p.minThreshold || 10));
+          return s <= min;
+        }).length;
+
+        setDbCounts({
+          sales: oList.length,
+          lowStock: lowS,
+          products: pList.length,
+          customers: (custs || []).length,
+          suppliers: (sups || []).length,
+          employees: (emps || []).length,
+          invoices: (invs || []).length
+        });
+      } catch (e) {}
+    }
+
+    loadCounts();
+    const interval = setInterval(loadCounts, 4000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   // Dynamic Permission Checker
   const isModuleRestricted = (tabId) => {
@@ -54,12 +107,48 @@ export default function Sidebar({ activeTab, setActiveTab, collapsed, setCollaps
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'sales', label: 'Sales & Orders', icon: ShoppingBag, badge: '14' },
-    { id: 'inventory', label: 'Inventory & Stock', icon: Package, badge: '12 Low', badgeColor: '#f59e0b' },
-    { id: 'accounting', label: 'Accounting & Invoices', icon: Receipt },
-    { id: 'crm', label: 'CRM & Clients', icon: Users },
-    { id: 'hr', label: 'HR & Payroll', icon: Briefcase },
-    { id: 'purchasing', label: 'Purchasing & Vendors', icon: Truck },
+    { 
+      id: 'sales', 
+      label: 'Sales & Orders', 
+      icon: ShoppingBag, 
+      badge: dbCounts.sales > 0 ? `${dbCounts.sales}` : null,
+      badgeColor: '#3b82f6'
+    },
+    { 
+      id: 'inventory', 
+      label: 'Inventory & Stock', 
+      icon: Package, 
+      badge: dbCounts.lowStock > 0 ? `${dbCounts.lowStock} Low` : (dbCounts.products > 0 ? `${dbCounts.products}` : null), 
+      badgeColor: dbCounts.lowStock > 0 ? '#f59e0b' : '#10b981'
+    },
+    { 
+      id: 'accounting', 
+      label: 'Accounting & Invoices', 
+      icon: Receipt,
+      badge: dbCounts.invoices > 0 ? `${dbCounts.invoices}` : null,
+      badgeColor: '#8b5cf6'
+    },
+    { 
+      id: 'crm', 
+      label: 'CRM & Clients', 
+      icon: Users,
+      badge: dbCounts.customers > 0 ? `${dbCounts.customers}` : null,
+      badgeColor: '#06b6d4'
+    },
+    { 
+      id: 'hr', 
+      label: 'HR & Payroll', 
+      icon: Briefcase,
+      badge: dbCounts.employees > 0 ? `${dbCounts.employees}` : null,
+      badgeColor: '#ec4899'
+    },
+    { 
+      id: 'purchasing', 
+      label: 'Purchasing & Vendors', 
+      icon: Truck,
+      badge: dbCounts.suppliers > 0 ? `${dbCounts.suppliers}` : null,
+      badgeColor: '#f97316'
+    },
     { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

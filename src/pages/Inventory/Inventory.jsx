@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Package, FolderTree, ArrowDownRight, ArrowUpRight, Barcode, SlidersHorizontal, Plus, CheckCircle2 } from 'lucide-react';
+import { Package, FolderTree, ArrowDownRight, ArrowUpRight, Barcode, SlidersHorizontal, Plus, CheckCircle2, AlertTriangle, Layers, Boxes } from 'lucide-react';
 
+import KPICard from '../../components/KPICard';
+import { formatCurrency } from '../../utils/currency';
 import ProductList from '../../components/Inventory/ProductList';
 import CategoryList from '../../components/Inventory/CategoryList';
 import StockInModal from '../../components/Inventory/StockInModal';
@@ -43,6 +45,20 @@ export default function Inventory({ searchQuery, setSearchQuery }) {
     }
     loadProducts();
   }, []);
+
+  // Real-time Database Inventory KPIs
+  const totalSkus = products.length;
+  const totalStockUnits = products.reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
+  const totalValuation = products.reduce((sum, p) => {
+    const stock = Number(p.stock) || 0;
+    const price = Number(p.costPrice !== undefined ? p.costPrice : (p.cost !== undefined ? p.cost : ((p.unitPrice || p.price || 0) * 0.65)));
+    return sum + (stock * price);
+  }, 0);
+  const lowStockCount = products.filter(p => {
+    const stock = Number(p.stock) || 0;
+    const minThresh = Number(p.minStock !== undefined ? p.minStock : (p.minThreshold || 10));
+    return stock <= minThresh;
+  }).length;
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -174,6 +190,40 @@ export default function Inventory({ searchQuery, setSearchQuery }) {
             Register SKU
           </button>
         </div>
+      </div>
+
+      {/* Real-Time Database KPI Stat Cards */}
+      <div className="kpi-grid" style={{ marginBottom: '20px' }}>
+        <KPICard 
+          title="Master Catalog SKUs" 
+          value={totalSkus} 
+          subtitle="Database Total Products"
+          icon={Package}
+          color="#3b82f6"
+        />
+        <KPICard 
+          title="Total Stock Units" 
+          value={`${totalStockUnits.toLocaleString()} units`} 
+          subtitle="On-Hand Warehouse Units"
+          icon={Boxes}
+          color="#10b981"
+        />
+        <KPICard 
+          title="Asset Stock Valuation" 
+          value={formatCurrency(totalValuation)} 
+          subtitle="Inventory Asset Cost"
+          icon={Layers}
+          color="#8b5cf6"
+        />
+        <KPICard 
+          title="Low Stock Reorders" 
+          value={lowStockCount} 
+          trend={lowStockCount > 0 ? "Requires Reorder" : "Optimal"}
+          isPositive={lowStockCount === 0}
+          subtitle="SKUs Below Reorder Point"
+          icon={AlertTriangle}
+          color={lowStockCount > 0 ? "#ef4444" : "#10b981"}
+        />
       </div>
 
       {/* Sub-tabs navigation */}

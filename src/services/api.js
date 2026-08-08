@@ -3,17 +3,64 @@
  * Provides persistent Database operations across all Enterprise modules (Offline & Online mode)
  * All values are fetched from and stored directly in the Database engine.
  */
-const isRemoteHostWithoutCustomBackend = typeof window !== 'undefined' 
-  && window.location.hostname !== 'localhost' 
-  && window.location.hostname !== '127.0.0.1' 
-  && !(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL);
-
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
   ? import.meta.env.VITE_API_URL 
-  : (isRemoteHostWithoutCustomBackend ? '' : 'http://localhost:5005/api');
+  : ((typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5005/api'
+    : '/api');
 const DB_KEY = 'minerp_database_v3';
 
-// Central Database Engine (LocalStorage / API fallback)
+// IndexedDB Engine for Permanent In-Browser Storage (Survives cache clearing)
+const IDB_NAME = 'minERP_Database_Store';
+const IDB_VERSION = 1;
+const IDB_STORE = 'minerp_data';
+
+function openIDB() {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.indexedDB) return resolve(null);
+    try {
+      const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+      request.onsuccess = (e) => resolve(e.target.result);
+      request.onerror = () => resolve(null);
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
+
+export async function saveToIndexedDB(dbData) {
+  const db = await openIDB();
+  if (!db) return;
+  try {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(JSON.stringify(dbData), 'current_db');
+  } catch (e) {}
+}
+
+export async function loadFromIndexedDB() {
+  const db = await openIDB();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get('current_db');
+      req.onsuccess = () => {
+        if (req.result) {
+          try { resolve(JSON.parse(req.result)); } catch(e) { resolve(null); }
+        } else { resolve(null); }
+      };
+      req.onerror = () => resolve(null);
+    } catch(e) { resolve(null); }
+  });
+}
+
+// Central Database Engine (IndexedDB / LocalStorage / API fallback)
 export function getLocalDB() {
   let db = null;
   try {
@@ -86,6 +133,12 @@ export function getLocalDB() {
 
   if (!db) {
     db = seedDB;
+    // Async attempt to recover from IndexedDB if localStorage was cleared
+    loadFromIndexedDB().then(idbData => {
+      if (idbData && typeof idbData === 'object') {
+        localStorage.setItem(DB_KEY, JSON.stringify(idbData));
+      }
+    });
   } else {
     Object.keys(seedDB).forEach(key => {
       if (db[key] === undefined) {
@@ -114,9 +167,12 @@ export async function pullCloudSync() {
   try {
     const res = await fetch('/api/sync');
     if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data === 'object' && !data.empty) {
-        remoteData = data;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && typeof data === 'object' && !data.empty) {
+          remoteData = data;
+        }
       }
     }
   } catch (e) {}
@@ -149,6 +205,7 @@ export async function pullCloudSync() {
     });
     
     localStorage.setItem(DB_KEY, JSON.stringify(merged));
+    saveToIndexedDB(merged);
     return merged;
   }
 
@@ -157,6 +214,8 @@ export async function pullCloudSync() {
 
 export async function pushCloudSync(db) {
   const payload = JSON.stringify(db);
+  saveToIndexedDB(db);
+
   try {
     await fetch('/api/sync', {
       method: 'POST',
@@ -183,6 +242,7 @@ if (typeof window !== 'undefined') {
 export function saveLocalDB(db) {
   try {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
+    saveToIndexedDB(db);
   } catch (e) {
     console.error('Failed to save local DB', e);
   }
@@ -219,10 +279,6 @@ let backendOnlineStatus = null;
 let lastCheckTime = 0;
 
 async function isBackendAvailable() {
-  if (isRemoteHostWithoutCustomBackend || !API_BASE_URL) {
-    backendOnlineStatus = false;
-    return false;
-  }
   const now = Date.now();
   if (backendOnlineStatus === true && (now - lastCheckTime < 10000)) {
     return true;
@@ -230,9 +286,17 @@ async function isBackendAvailable() {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
+    const healthUrl = API_BASE_URL ? `${API_BASE_URL}/health` : '/api/health';
+    const res = await fetch(healthUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
-    backendOnlineStatus = res.ok;
+    if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        backendOnlineStatus = true;
+        lastCheckTime = now;
+        return true;
+      }
+    }
   } catch (err) {
     backendOnlineStatus = false;
   }

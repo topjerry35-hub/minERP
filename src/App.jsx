@@ -20,7 +20,7 @@ import NewSaleModal from './components/NewSaleModal';
 import InvoiceBillModal from './components/Sales/InvoiceBillModal';
 import NotificationsDrawer from './components/NotificationsDrawer';
 import { formatCurrency } from './utils/currency';
-import { createOrder, createInvoice, fetchCompanies, fetchOffices, fetchRoles, fetchUsers } from './services/api';
+import { createOrder, createInvoice, fetchCompanies, fetchOffices, fetchRoles, fetchUsers, fetchProducts, fetchOrders, fetchInvoices } from './services/api';
 
 function App() {
   // Authentication State
@@ -147,33 +147,77 @@ function App() {
   const [headerActiveInvoice, setHeaderActiveInvoice] = useState(null);
   const [headerActiveOrder, setHeaderActiveOrder] = useState(null);
 
-  // Notifications State
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'warning',
-      title: 'Low Stock Alert',
-      message: 'UltraWide 34" Curved Monitor is down to 2 units.',
-      time: '10 mins ago',
-      read: false
-    },
-    {
-      id: 2,
-      type: 'order',
-      title: 'High-Value Sale Recorded',
-      message: 'Nexus Tech Solutions placed an order for ₹3,450.00.',
-      time: '1 hour ago',
-      read: false
-    },
-    {
-      id: 3,
-      type: 'success',
-      title: 'Payment Invoice Cleared',
-      message: 'Vanguard Capital invoice #INV-4921 paid in full.',
-      time: '3 hours ago',
-      read: true
+  // Real-Time Database System Notifications
+  const [notifications, setNotifications] = useState([]);
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('minerp_read_notif_ids');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+
+  useEffect(() => {
+    async function syncDatabaseNotifications() {
+      try {
+        const prods = await fetchProducts();
+        const orders = await fetchOrders();
+        const invs = await fetchInvoices();
+
+        const notifs = [];
+
+        // 1. Low stock alerts from DB products
+        (prods || []).forEach(p => {
+          const stock = Number(p.stock) || 0;
+          const minStock = Number(p.minStock !== undefined ? p.minStock : (p.minThreshold || 10));
+          if (stock <= minStock) {
+            const notifId = `NOTIF-STOCK-${p.sku}`;
+            notifs.push({
+              id: notifId,
+              type: 'warning',
+              title: `Low Stock Alert (${p.sku})`,
+              message: `${p.name || p.sku} stock level is down to ${stock} units (min threshold: ${minStock}).`,
+              time: 'Database Alert',
+              read: readNotifIds.includes(notifId)
+            });
+          }
+        });
+
+        // 2. Recent sales orders from DB
+        (orders || []).slice(0, 5).forEach(o => {
+          const notifId = `NOTIF-ORD-${o.id}`;
+          notifs.push({
+            id: notifId,
+            type: 'order',
+            title: `Sales Order ${o.id}`,
+            message: `${o.customer || 'Customer'} placed an order for ${formatCurrency(o.amount || 0)}.`,
+            time: o.date || 'Database Order',
+            read: readNotifIds.includes(notifId)
+          });
+        });
+
+        // 3. Billing invoices from DB
+        (invs || []).slice(0, 5).forEach(inv => {
+          const notifId = `NOTIF-INV-${inv.id}`;
+          notifs.push({
+            id: notifId,
+            type: 'success',
+            title: `Invoice ${inv.id} (${inv.status || 'Active'})`,
+            message: `Commercial Invoice issued to ${inv.customer || 'Client'} for ${formatCurrency(inv.amount || 0)}.`,
+            time: inv.date || 'Database Invoice',
+            read: readNotifIds.includes(notifId)
+          });
+        });
+
+        setNotifications(notifs);
+      } catch (e) {}
     }
-  ]);
+
+    if (isAuthenticated) {
+      syncDatabaseNotifications();
+      const interval = setInterval(syncDatabaseNotifications, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, readNotifIds]);
 
   const handleLogin = (userData) => {
     setUser(userData);
@@ -192,6 +236,9 @@ function App() {
   };
 
   const handleMarkAllRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadNotifIds(allIds);
+    localStorage.setItem('minerp_read_notif_ids', JSON.stringify(allIds));
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 

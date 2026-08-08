@@ -10,9 +10,14 @@ import {
   CheckCircle2, 
   Printer,
   Monitor,
-  Zap
+  Zap,
+  DollarSign,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import { getTodayFormatted, formatDate } from '../../utils/date';
+import KPICard from '../../components/KPICard';
+import { formatCurrency } from '../../utils/currency';
 
 import CustomerList from '../../components/Sales/CustomerList';
 import QuotationList from '../../components/Sales/QuotationList';
@@ -100,6 +105,12 @@ export default function Sales({ searchQuery, setSearchQuery }) {
     }
     loadData();
   }, []);
+
+  // Dynamic Real-Time Sales Metrics from Database
+  const totalSalesRevenue = salesOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  const completedOrdersCount = salesOrders.filter(o => (o.status || '').toLowerCase() === 'completed').length;
+  const totalReceivables = customers.reduce((sum, c) => sum + (Number(c.receivablesBalance) || 0), 0);
+  const totalQuotationsValuation = quotations.reduce((sum, q) => sum + (Number(q.amount) || 0), 0);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -353,6 +364,38 @@ export default function Sales({ searchQuery, setSearchQuery }) {
             ⚡ Direct Sale
           </button>
         </div>
+      </div>
+
+      {/* Real-Time Database KPI Stat Cards */}
+      <div className="kpi-grid" style={{ marginBottom: '20px' }}>
+        <KPICard 
+          title="Gross Sales Revenue" 
+          value={formatCurrency(totalSalesRevenue)} 
+          subtitle="Database Total Sales"
+          icon={ShoppingBag}
+          color="#10b981"
+        />
+        <KPICard 
+          title="Sales Orders" 
+          value={salesOrders.length} 
+          subtitle={`${completedOrdersCount} Fulfilled & Completed`}
+          icon={Receipt}
+          color="#3b82f6"
+        />
+        <KPICard 
+          title="Customer Receivables" 
+          value={formatCurrency(totalReceivables)} 
+          subtitle="Outstanding Customer Balance"
+          icon={CreditCard}
+          color="#f59e0b"
+        />
+        <KPICard 
+          title="Quotations Pipeline" 
+          value={formatCurrency(totalQuotationsValuation)} 
+          subtitle={`${quotations.length} Active Quotes Issued`}
+          icon={FileText}
+          color="#8b5cf6"
+        />
       </div>
 
       {/* Sub-tabs navigation */}
